@@ -36,19 +36,22 @@ export interface RegisterCustomerInput {
   phone: string;
 }
 
-// TODO: throws padronizados — trocar as HttpExceptions do Nest por AuthError/CustomerError
-// (DomainError) + DomainExceptionFilter. Use case não deveria conhecer HTTP.
 @Injectable()
 export class RegisterCustomerUseCase
   implements UseCase<RegisterCustomerInput, User>
 {
   constructor(
-    @Inject(USER_REPOSITORY) private readonly userRepository: UserRepository,
+    @Inject(USER_REPOSITORY)
+    private readonly userRepository: UserRepository,
+
     @Inject(CUSTOMER_REPOSITORY)
     private readonly customerRepository: CustomerRepository,
+
     @Inject(CUSTOMER_REGISTRATION_REPOSITORY)
     private readonly registrationRepository: CustomerRegistrationRepository,
-    @Inject(PASSWORD_HASHER) private readonly passwordHasher: PasswordHasher,
+
+    @Inject(PASSWORD_HASHER)
+    private readonly passwordHasher: PasswordHasher,
   ) {}
 
   async execute(input: RegisterCustomerInput): Promise<User> {
@@ -63,11 +66,14 @@ export class RegisterCustomerUseCase
       throw new ConflictException('CPF/CNPJ já cadastrado.');
     }
 
+    const hashedPassword = await this.passwordHasher.hash(password.value);
+
     const user = User.create({
       email,
-      hashedPassword: await this.passwordHasher.hash(password.value),
+      hashedPassword,
       type: UserType.CUSTOMER,
     });
+
     const customer = Customer.create({
       userId: user.idValue,
       document,
