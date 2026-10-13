@@ -1,68 +1,58 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Tech Challenge API — Oficina Mecânica
 
-<p align="center">Back-end do <strong>Tech Challenge FIAP</strong>: sistema de atendimento e execução de serviços de uma oficina mecânica, construído com <a href="http://nestjs.com/" target="_blank">NestJS</a>.</p>
-
-<p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-</p>
-
-## Descrição
-
-MVP de back-end para o **Tech Challenge FIAP**: uma oficina mecânica de médio porte quer sair de planilha/papel para um sistema integrado de atendimento e execução de serviços — ordens de serviço, clientes, veículos e peças/estoque — aplicando DDD e boas práticas de qualidade e segurança.
+Back-end do **Tech Challenge FIAP** (SOAT): sistema integrado de atendimento e execução de serviços para uma oficina mecânica de médio porte. Cobre ordens de serviço, clientes, veículos e peças/estoque, aplicando DDD e boas práticas de qualidade e segurança.
 
 ## Stack
 
-NestJS + TypeScript · PostgreSQL + Prisma ORM · Docker/docker-compose · Swagger · JWT · Vitest · Biome · Husky · Changesets
+Bun · Elysia · TypeScript · TypeBox · PostgreSQL + Prisma ORM · OpenAPI (Scalar) · JWT (`jose`) · Biome · Husky · Changesets · Docker/docker-compose
 
-> Prisma, PostgreSQL, Docker e Swagger ainda serão adicionados — este README será atualizado conforme o projeto avança.
+> Em migração a partir da versão NestJS. Status em [`docs/migration/elysia.md`](docs/migration/elysia.md).
+
+## Pré-requisitos
+
+- [Bun](https://bun.sh) (`curl -fsSL https://bun.sh/install | bash`)
+- PostgreSQL (local ou via `docker-compose`, quando disponível)
 
 ## Instalação
 
 ```bash
-pnpm install
+bun install
+cp .env.example .env   # preencha DATABASE_URL e JWT_SECRET
+bun run prisma:migrate
 ```
 
-## Compilando e rodando o projeto
+## Rodando
 
 ```bash
-# desenvolvimento
-pnpm run start
-
-# watch mode
-pnpm run start:dev
-
-# produção
-pnpm run start:prod
+bun run dev     # watch mode
+bun run start   # sem watch
 ```
+
+A documentação da API fica em `http://localhost:3000/openapi`.
 
 ## Testes
 
 ```bash
-# unitários
-pnpm run test
-
-# e2e
-pnpm run test:e2e
-
-# cobertura
-pnpm run test:cov
+bun test            # unitários + e2e
+bun run test:cov    # cobertura
 ```
 
 ## Qualidade
 
 ```bash
-pnpm lint    # biome lint
-pnpm check   # biome lint + format --write
-pnpm ci      # checagem usada no CI (não escreve nada)
+bun run typecheck   # tsc --noEmit (o Bun não checa tipos ao executar)
+bun run lint        # biome lint
+bun run check       # biome lint + format --write
+bun run ci          # checagem usada no CI (não escreve nada)
 ```
 
-## Recursos
+## Documentação
 
-Documentação completa da arquitetura, escopo do domínio e convenções de código em [`CLAUDE.md`](./CLAUDE.md). Para saber mais sobre o framework, veja a [documentação do NestJS](https://docs.nestjs.com).
+- [Arquitetura e padrões de código](docs/code/README.md)
+- [Workflow de git (branch, commit, PR, changesets)](docs/workflow/README.md)
+- [Plano de migração NestJS → Elysia](docs/migration/elysia.md)
+- [Contexto do projeto e escopo](CLAUDE.md)
 
 ## Licença
 
-Uso acadêmico (FIAP) — sem licença pública.
+Uso acadêmico (FIAP), sem licença pública.

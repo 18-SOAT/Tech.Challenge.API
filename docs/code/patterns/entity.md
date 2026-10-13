@@ -34,7 +34,9 @@ export class Customer {
 
 ## IDs são gerados no domain, não pelo banco
 
-`IdGenerator.generate()` (`shared/domain/id-generator.ts`) roda dentro do `create()` e gera um **UUID v7** (lib `uuid` — o Node 22 ainda não tem `randomUUIDv7`). A coluna `id` do schema do Prisma não tem `@default(uuid())`.
+`IdGenerator.generate()` (`shared/domain/id-generator.ts`) roda dentro do `create()` e gera um **UUID v7** com a lib `uuid`. A coluna `id` do schema do Prisma não tem `@default(uuid())`.
+
+O Bun tem `Bun.randomUUIDv7()` nativo, mas o domínio não usa: `Bun.*` é API de runtime, e o domain é TypeScript puro, sem depender de onde roda. A lib `uuid` é pura e funciona em qualquer runtime.
 
 Por que v7 e não v4 (`crypto.randomUUID()`): o v7 começa com um timestamp, então os ids novos são sempre "maiores" que os anteriores. O índice da PK no Postgres cresce só no final, em vez de receber inserts aleatórios espalhados pela árvore — inserts mais baratos e índice menos fragmentado.
 
@@ -42,7 +44,9 @@ Isso importa porque mantém a Entity autossuficiente: ela tem uma identidade est
 
 ## Value Objects pra campos validados/sensíveis
 
-CPF/CNPJ, placa e campos parecidos são Value Objects, não strings soltas. O VO valida na construção, garantindo que o invariante se mantenha **independente de quem chama** — isso não é redundante com as checagens do `class-validator` em nível de request (ver [DTO](dto.md)); os dois protegem fronteiras diferentes. Extraia o algoritmo de validação de fato (ex: lógica de dígito verificador de CPF) pra uma única função pura compartilhada, reusada tanto pelo VO quanto pelo decorator customizado do `class-validator`, de forma que a regra seja escrita uma vez só, mesmo sendo invocada em dois lugares.
+CPF/CNPJ, placa e campos parecidos são Value Objects, não strings soltas. O VO valida na construção, garantindo que o invariante se mantenha **independente de quem chama**. Isso não é redundante com o schema TypeBox da request (ver [DTO](dto.md)); os dois protegem fronteiras diferentes. Extraia o algoritmo de validação de fato (ex: lógica de dígito verificador de CPF) para uma única função pura compartilhada, reusada tanto pelo VO quanto pelo formato customizado do TypeBox (`FormatRegistry`). Assim a regra é escrita uma vez só, mesmo sendo invocada em dois lugares.
+
+Quando a validação falha, o VO lança o `DomainError` do catalog do módulo (ex: `CustomerError.invalidDocument()`), nunca um `Error` genérico. É isso que permite ao `errorHandler` responder 400 com a mensagem certa em vez de 500 (ver [Tratamento de erros](error-handling.md)).
 
 ## Regras de negócio ficam aqui, não no Use Case
 

@@ -1,11 +1,11 @@
 # Cache
 
+> Ainda não implementado. Este doc define o formato para quando entrar (ex: snapshot de status da OS, tempo médio de execução).
+
 ## Port genérica
 
 ```typescript
 // shared/infrastructure/cache/cache.port.ts
-export const CACHE = Symbol('CACHE');
-
 export interface Cache {
   get<T>(key: string): Promise<T | null>;
   set(key: string, value: unknown): Promise<void>;
@@ -15,7 +15,7 @@ export interface Cache {
 }
 ```
 
-Implementada por um adapter Redis, conectado via um módulo `@Global()` — mesma receita de [services-pattern.md](services-pattern.md). Diferente da `EmailSender`, essa port não carrega nenhum significado de negócio; ela existe só pra que as implementações sejam substituíveis e os consumidores sejam testáveis sem uma instância real do Redis.
+Implementada por um adapter Redis, instanciado uma vez no `shared.container.ts`, seguindo a mesma receita de [services-pattern.md](services-pattern.md). Diferente da `EmailSender`, essa port não carrega significado de negócio. Ela existe para que as implementações sejam substituíveis e para que os consumidores sejam testáveis sem um Redis real (fake em memória em `test/fakes/`).
 
 ## Catalog de chaves de cache por módulo (padrão catalog)
 
@@ -37,8 +37,8 @@ export class ServiceOrderCacheKeys {
 }
 ```
 
-O enum evita a mesma classe de bug do `STATUS_MAP` de erro (ver [Tratamento de erros](../patterns/error-handling.md)): um erro de digitação numa chave escrita à mão quebra silenciosamente os cache hits, sem nenhum aviso do compilador. Ver [Padrão catalog](../patterns/catalog-pattern.md) — mesmo formato de `CustomerError`/`ServiceOrderMailer`.
+O enum evita a mesma classe de bug do `STATUS_MAP` de erro (ver [Tratamento de erros](../patterns/error-handling.md)): um erro de digitação numa chave escrita à mão quebra os cache hits silenciosamente, sem nenhum aviso do compilador. Ver [Padrão catalog](../patterns/catalog-pattern.md): é o mesmo formato de `CustomerError`/`ServiceOrderMailer`.
 
 ## Formato da chave: separado por dois-pontos
 
-`entity:id:usage` (ex: `service-order:123:status-snapshot`) — a convenção idiomática do Redis, não underscores. Funciona bem com comandos baseados em pattern (`KEYS service-order:*`) e qualquer ferramenta/observabilidade do Redis que assuma namespacing por dois-pontos.
+`entity:id:usage` (ex: `service-order:123:status-snapshot`) é a convenção idiomática do Redis, no lugar de underscores. Funciona bem com comandos baseados em pattern (`SCAN ... MATCH service-order:*`) e com ferramentas de observabilidade do Redis que assumem namespacing por dois-pontos.

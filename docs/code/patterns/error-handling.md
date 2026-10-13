@@ -1,4 +1,10 @@
-# Tratamento de erros
+# Tratamento de erros e envelope de resposta
+
+Toda resposta da API, de sucesso ou de erro, tem o mesmo formato:
+
+```json
+{ "data": <payload ou null>, "message": <string ou null>, "status": <código HTTP> }
+```
 
 ## `DomainError` precisa ser uma classe, não uma interface
 
@@ -9,16 +15,16 @@ export abstract class DomainError extends Error {
 }
 ```
 
-Interfaces do TypeScript são apagadas em tempo de compilação — `instanceof` (e o `@Catch()` do Nest) precisam de um tipo real em runtime. Uma `abstract class` dá a mesma garantia de "toda subclasse precisa implementar isso" que uma interface daria, mas continua existindo em runtime.
+Interfaces do TypeScript somem na compilação, e o `instanceof` usado pelo `errorHandler` precisa de um tipo real em runtime. Uma `abstract class` dá a mesma garantia de "toda subclasse precisa implementar isso" que uma interface daria, mas continua existindo em runtime.
 
 ## Catalog por módulo
 
-Uma classe por módulo/bounded context, com constructor privado e uma factory estática nomeada por erro específico — não uma chamada genérica `new SomeError(code, message)` espalhada por todo lugar:
+Uma classe por módulo/bounded context, com constructor privado e uma factory estática nomeada para cada erro. Nada de um `new SomeError(code, message)` genérico espalhado pelo código:
 
 ```typescript
 // modules/customer/domain/errors/customer.error.ts
 export enum CustomerErrorCode {
-  NOT_FOUND = 'CUSTOMER_NOT_FOUND',
+  INVALID_DOCUMENT = 'CUSTOMER_INVALID_DOCUMENT',
   DOCUMENT_ALREADY_IN_USE = 'CUSTOMER_DOCUMENT_ALREADY_IN_USE',
 }
 
@@ -27,60 +33,106 @@ export class CustomerError extends DomainError {
     super(message);
   }
 
-  static notFound(document: string): CustomerError {
-    return new CustomerError(CustomerErrorCode.NOT_FOUND, `Cliente com documento ${document} não encontrado.`);
+  static invalidDocument(): CustomerError {
+    return new CustomerError(CustomerErrorCode.INVALID_DOCUMENT, 'CPF/CNPJ inválido.');
   }
 
-  static documentAlreadyInUse(document: string): CustomerError {
-    return new CustomerError(
-      CustomerErrorCode.DOCUMENT_ALREADY_IN_USE,
-      `Documento ${document} já está em uso.`,
-    );
+  static documentAlreadyInUse(): CustomerError {
+    return new CustomerError(CustomerErrorCode.DOCUMENT_ALREADY_IN_USE, 'CPF/CNPJ já cadastrado.');
   }
 }
 ```
 
-Use Cases lançam via o catalog: `throw CustomerError.notFound(document)`. Ver [Padrão catalog](catalog-pattern.md) — esse mesmo formato se repete pra Mailers e chaves de cache.
+Use Cases e Value Objects lançam via catalog: `throw CustomerError.documentAlreadyInUse()`. Ver [Padrão catalog](catalog-pattern.md); o mesmo formato se repete em Mailers e chaves de cache.
 
-## Filter global mapeia `code` → status HTTP
+Catalogs existentes (auth): `AuthError` (`invalidCredentials`, `tokenMissing`, `tokenInvalid`, `userUnavailable`, `forbidden`), `UserError` (`emailAlreadyInUse`, `invalidPassword`), `CustomerError` (`invalidDocument`, `invalidPhone`, `documentAlreadyInUse`) e `SharedError` (`invalidEmail`).
+
+## `errorHandler`: plugin global que mapeia `code` → status HTTP
 
 ```typescript
-// shared/presentation/filters/domain-exception.filter.ts
-const STATUS_MAP: Record<string, HttpStatus> = {
-  CUSTOMER_NOT_FOUND: HttpStatus.NOT_FOUND,
-  CUSTOMER_DOCUMENT_ALREADY_IN_USE: HttpStatus.CONFLICT,
+// shared/presentation/http/error-handler.plugin.ts
+const STATUS_MAP: Record<string, number> = {
+  AUTH_INVALID_CREDENTIALS: 401,
+  AUTH_TOKEN_MISSING: 401,
+  AUTH_TOKEN_INVALID: 401,
+  AUTH_USER_UNAVAILABLE: 401,
+  AUTH_FORBIDDEN: 403,
+  USER_EMAIL_ALREADY_IN_USE: 409,
+  USER_INVALID_PASSWORD: 400,
+  CUSTOMER_INVALID_DOCUMENT: 400,
+  CUSTOMER_INVALID_PHONE: 400,
+  CUSTOMER_DOCUMENT_ALREADY_IN_USE: 409,
+  SHARED_INVALID_EMAIL: 400,
 };
 
-@Catch(DomainError)
-export class DomainExceptionFilter implements ExceptionFilter {
-  catch(exception: DomainError, host: ArgumentsHost) {
-    const status = STATUS_MAP[exception.code];
+const fail = (set: Context['set'], status: number, message: string) => {
+  set.status = status;
+  return { data: null, message, status };
+};
 
-    if (!status) {
-      // Code sem mapeamento = erro de programação, não erro de negócio.
-      // Falha alto (500) em vez de adivinhar um status silenciosamente.
-      throw exception;
+export const errorHandler = new Elysia({ name: 'error-handler' }).onError(
+  { as: 'global' },
+  ({ code, error, set }) => {
+    if (error instanceof DomainError) {
+      const status = STATUS_MAP[error.code];
+      if (status) return fail(set, status, error.message);
+      // Code sem mapeamento = erro de programação, não de negócio.
+      console.error(`[errorHandler] DomainError sem STATUS_MAP: ${error.code}`, error);
+      return fail(set, 500, 'Erro interno.');
     }
 
-    const res = host.switchToHttp().getResponse<Response>();
-    res.status(status).json({ data: null, message: exception.message, status });
-  }
-}
+    if (code === 'VALIDATION') return fail(set, 400, validationMessage(error));
+    if (code === 'NOT_FOUND') return fail(set, 404, 'Rota não encontrada.');
+    if (code === 'PARSE') return fail(set, 400, 'Corpo da requisição malformado.');
+
+    console.error('[errorHandler] erro não tratado', error);
+    return fail(set, 500, 'Erro interno.');
+  },
+);
 ```
 
-**Regra: todo `XxxError` novo precisa de uma entrada no `STATUS_MAP`.** O filter falha alto (relança, vira um 500 não tratado) em vez de cair silenciosamente num status padrão quando um `code` não é encontrado — fail-safe, não fail-open. Nunca dê a esse map um fallback silencioso tipo `?? HttpStatus.BAD_REQUEST`; isso transformaria um mapeamento esquecido (ex: um conflito de verdade) num status errado em vez de um bug visível.
+### Ordem de decisão
 
-## Envelope de sucesso: `ResponseInterceptor`
+| Situação | Status | `message` |
+|---|---|---|
+| `DomainError` com `code` no `STATUS_MAP` | o do mapa | `error.message` (já em português, vindo do catalog) |
+| `DomainError` **sem** entrada no mapa | 500 + log | genérica (`Erro interno.`) |
+| `VALIDATION` (schema TypeBox rejeitou) | 400 | o `error` customizado do campo no schema (ver [DTO](dto.md)), ou uma genérica |
+| `NOT_FOUND` (rota inexistente) | 404 | `Rota não encontrada.` |
+| `PARSE` (JSON malformado) | 400 | `Corpo da requisição malformado.` |
+| Qualquer outra coisa | 500 + log | genérica: **nunca** devolva stack ou mensagem interna |
+
+**Regra: todo `XxxError` novo precisa de entrada no `STATUS_MAP`.** Um `code` sem mapeamento vira 500 com log, e não um status "parecido" adivinhado. É fail-safe, não fail-open: nunca dê ao mapa um fallback silencioso tipo `?? 400`, porque isso transformaria um mapeamento esquecido (ex: um conflito de verdade) num status errado, em vez de um bug visível. Um teste unitário do `errorHandler` percorre todos os enums `XxxErrorCode` e falha se algum não estiver no mapa.
+
+### Por que `{ as: 'global' }`
+
+No Elysia, um hook registrado num plugin vale, por padrão, **só para as rotas daquele plugin** (escopo local). O `errorHandler` é um plugin próprio e precisa capturar erros das rotas de **todos** os módulos. Por isso o `as: 'global'`. Ele também precisa ser o **primeiro** `.use()` do `createApp`, porque hooks só valem para rotas registradas depois deles.
+
+## Envelope de sucesso: `ok()`
 
 ```typescript
-// shared/presentation/interceptors/response.interceptor.ts
-@Injectable()
-export class ResponseInterceptor implements NestInterceptor {
-  intercept(context: ExecutionContext, next: CallHandler) {
-    const res = context.switchToHttp().getResponse<Response>();
-    return next.handle().pipe(map((result) => ({ data: result, message: undefined, status: res.statusCode })));
-  }
-}
+// shared/presentation/http/envelope.ts
+import { status, t, type TSchema } from 'elysia';
+
+export const ok = <T, const S extends number = 200>(data: T, code: S = 200 as S) =>
+  status(code, { data, message: null, status: code });
+
+export const Envelope = <T extends TSchema>(data: T) =>
+  t.Object({ data, message: t.Null(), status: t.Number() });
+
+export const ApiError = t.Object({
+  data: t.Null(),
+  message: t.String(),
+  status: t.Number(),
+});
 ```
 
-Controllers só retornam dado bruto; esse interceptor global constrói o envelope `{data, message, status}`. Nem o Interceptor nem o Filter são "middleware" — middleware do Nest roda antes do route handler e não consegue acessar o valor de retorno nem capturar suas exceptions. Isso é especificamente um Interceptor (caminho de sucesso) + Exception Filter (caminho de erro).
+O handler devolve `ok(dto)` ou `ok(dto, 201)`, e a rota declara `response: { 201: Envelope(XxxSchema), 409: ApiError }`.
+
+### Por que helper explícito e não um hook global
+
+Daria para embrulhar o retorno automaticamente com um hook global (`mapResponse`), mas aí a validação de resposta, o OpenAPI e a inferência de tipos enxergariam o **dado cru**, enquanto o cliente recebe o **envelope**: o contrato documentado ficaria diferente do real.
+
+Com o `ok()` explícito, o valor que o handler retorna **é** o que sai na resposta. O schema `response` valida exatamente isso, o OpenAPI documenta exatamente isso e o tipo inferido (inclusive para um cliente Eden no futuro) é exatamente isso. O custo é escrever `ok(...)` em cada handler, que é uma chamada só.
+
+O `status()` do Elysia (no lugar de `set.status = 201`) faz o código HTTP fazer parte do tipo de retorno. É assim que o Elysia sabe qual entrada do `response` usar para validar.

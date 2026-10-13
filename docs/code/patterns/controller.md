@@ -1,43 +1,118 @@
-# Controller
+# Controller (handler + index)
 
-Um Controller só traduz HTTP ↔ Use Case. Ele não tem lógica de negócio e nunca fala com um Repository diretamente.
+A camada de entrada HTTP de cada módulo tem duas peças:
 
-## Responsabilidades
+- **Handler**: um arquivo por operação. Traduz HTTP ↔ Use Case e declara o contrato da rota (body, params, response por status, docs).
+- **`index.ts`**: o plugin de rotas do módulo. Define `prefix`/`tags`, separa rotas públicas de protegidas (guard) e registra os handlers.
 
-- Receber o request DTO já validado (a validação acontece num `Pipe`, antes do método rodar — ver [DTO](dto.md)).
-- Chamar o(s) Use Case(s) específico(s) que a rota precisa.
-- Retornar o resultado bruto; o `ResponseInterceptor` global embrulha no envelope padrão (ver [Tratamento de erros](error-handling.md)).
-- Opcionalmente mapear o resultado pra um Response DTO antes de retornar (ver [DTO](dto.md)).
+Nenhuma das duas tem lógica de negócio, e nenhuma fala com um Repository diretamente.
 
-## Injete Use Cases diretamente — nunca um "God Service"
-
-Injete só os Use Cases que cada rota realmente precisa, um por operação:
+## Handler: uma factory de plugin por operação
 
 ```typescript
-// modules/customer/presentation/controllers/customer.controller.ts
-@Controller('customers')
-export class CustomerController {
-  constructor(
-    private readonly createCustomer: CreateCustomerUseCase,
-    private readonly findCustomerByDocument: FindCustomerByDocumentUseCase,
-  ) {}
+// modules/auth/presentation/controllers/login/login.handler.ts
+import { Elysia } from 'elysia';
+import { ApiError, Envelope, ok } from '../../../../../shared/presentation/http/envelope.js';
+import type { LoginUseCase } from '../../../application/use-cases/login.use-case.js';
+import { LoginRequestSchema, LoginResponseSchema } from '../../dtos/login.dto.js';
+import { LoginResponseDto } from '../../dtos/login.response.dto.js';
 
-  @Post()
-  async create(@Body() dto: CreateCustomerRequestDto) {
-    const customer = await this.createCustomer.execute(dto);
-    return CustomerResponseDto.fromEntity(customer);
-  }
-
-  @Get(':document')
-  async findByDocument(@Param('document') document: string) {
-    const customer = await this.findCustomerByDocument.execute(document);
-    return CustomerResponseDto.fromEntity(customer);
-  }
-}
+export const loginHandler = (login: LoginUseCase) =>
+  new Elysia().post(
+    '/login',
+    async ({ body }) => ok(LoginResponseDto.fromOutput(await login.execute(body))),
+    {
+      body: LoginRequestSchema,
+      response: {
+        200: Envelope(LoginResponseSchema),
+        400: ApiError,
+        401: ApiError,
+      },
+      detail: { summary: 'Autentica um usuário e devolve o access token' },
+    },
+  );
 ```
+
+### Por que factory (função que recebe o use case)
+
+Não há container de DI. O handler recebe por parâmetro **só o use case daquela operação**, e quem chama é o composition root (via `createApp`). Isso dá:
+
+- **Dependência explícita**: a assinatura mostra do que a rota depende.
+- **Testabilidade**: o e2e passa um use case montado com fakes, sem banco (ver `CLAUDE.md`, seção Testes).
+- **Sem God Service**: cada handler recebe um use case, nunca "o service do módulo".
+
+### Responsabilidades
+
+- Declarar `body`/`params`/`query` com schemas TypeBox. O Elysia valida **antes** do handler rodar e rejeita com 400 (ver [DTO](dto.md)).
+- Chamar o(s) Use Case(s) que a rota precisa.
+- Mapear o resultado para um Response DTO (whitelist) e devolver com `ok(dto, status)` (ver [Tratamento de erros](error-handling.md#envelope-de-sucesso-ok)).
+- Declarar **todos** os status possíveis em `response`, inclusive os de erro (ver [OpenAPI](../libs/openapi.md)).
+
+Os erros não são tratados aqui. O use case lança um `DomainError` e o `errorHandler` global converte para HTTP.
+
+## `index.ts`: prefixo, tags e guard
+
+```typescript
+// modules/auth/presentation/index.ts
+import { Elysia } from 'elysia';
+import type { AuthPlugin } from '../../../shared/presentation/auth/auth.plugin.js';
+import type { AuthUseCases } from '../auth.container.js';
+import { loginHandler } from './controllers/login/login.handler.js';
+import { meHandler } from './controllers/me/me.handler.js';
+import { registerHandler } from './controllers/register/register.handler.js';
+
+export const authRoutes = (useCases: AuthUseCases, auth: AuthPlugin) =>
+  new Elysia({ prefix: '/auth', tags: ['Auth'] })
+    .use(auth)
+    // Rotas públicas: FORA do guard.
+    .use(registerHandler(useCases.registerCustomer))
+    .use(loginHandler(useCases.login))
+    // Rotas protegidas: DENTRO do guard.
+    .guard({ auth: true, detail: { security: [{ bearerAuth: [] }] } }, (app) =>
+      app.use(meHandler(useCases.getMe, auth)),
+    );
+```
+
+### Regra: rota nova nasce protegida
+
+O ideal de segurança é *deny by default*: esquecer de proteger uma rota não pode deixá-la aberta. Como a proteção é declarada por módulo (no `.guard()` do `index.ts`), isso é garantido por **convenção + teste**:
+
+- Todo handler novo entra **dentro** do `.guard(...)` do `index.ts`.
+- Só fica fora do guard a rota que é pública por requisito de negócio (cadastro, login, consulta pública de status da OS). No PR, essa escolha precisa estar justificada.
+- Todo módulo com rota protegida tem um e2e que chama a rota **sem token** e espera 401. É esse teste que garante a regra; a convenção sozinha não garante.
+
+### Handler que precisa do usuário logado
+
+O `user` (claims do JWT) entra no contexto pelo macro `auth` (ver [Autenticação](auth.md)). Para o TypeScript enxergar o `user` dentro do handler, o próprio handler também faz `.use(auth)` e declara `auth: true` na rota:
+
+```typescript
+// modules/auth/presentation/controllers/me/me.handler.ts
+export const meHandler = (getMe: GetMeUseCase, auth: AuthPlugin) =>
+  new Elysia().use(auth).get(
+    '/me',
+    async ({ user }) => ok(AuthenticatedUserResponseDto.fromClaims(await getMe.execute(user.sub))),
+    { auth: true, response: { 200: Envelope(AuthenticatedUserSchema), 401: ApiError } },
+  );
+```
+
+O plugin `auth` tem `name`, então o Elysia deduplica e registra uma vez só. `auth: true` é a mesma chave de macro do guard, então não verifica o token duas vezes. *(Isso precisa ser confirmado no e2e da Fase 7 da migração; se o comportamento for outro, esta seção é atualizada.)*
+
+## Organização das pastas
+
+```
+presentation/controllers/
+├── register/register.handler.ts
+├── login/login.handler.ts
+├── me/me.handler.ts
+└── find/
+    ├── by-id/find-customer-by-id.handler.ts
+    └── by-document/find-customer-by-document.handler.ts
+```
+
+Uma pasta por operação, com subpastas quando a mesma operação tem variações (ex: `find/by-id`, `find/by-document`). Testes de handler ficam no e2e (`test/*.e2e.spec.ts`), não ao lado do handler.
 
 ## Anti-pattern: service orquestrador
 
-Não crie um `CustomerService` que só delega pra `CreateCustomerUseCase`, `FindCustomerByDocumentUseCase`, etc. Isso recria o "fat service" que a separação em Use Case foi criada pra evitar: toda rota acaba dependendo de todo Use Case do módulo, e a camada extra não agrega valor.
+Não crie um `CustomerService` que só delega para `CreateCustomerUseCase`, `FindCustomerByDocumentUseCase` etc. Isso recria o "fat service" que a separação em Use Case existe pra evitar: toda rota passa a depender de todo Use Case do módulo, e a camada extra não agrega nada.
 
-Um Use Case pode chamar outro Use Case — mas só quando existe uma dependência de negócio real (ex: abrir um `Order` precisa criar o `Vehicle` primeiro, se ele ainda não existir), nunca como uma passagem genérica. Ver [Use Case](use-case.md).
+Um Use Case pode chamar outro Use Case, mas só quando existe uma dependência de negócio real (ex: abrir uma `ServiceOrder` precisa criar o `Vehicle` primeiro, se ele ainda não existir), nunca como passagem genérica. Ver [Use Case](use-case.md).
