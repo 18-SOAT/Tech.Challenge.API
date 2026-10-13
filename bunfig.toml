@@ -1,0 +1,7 @@
+[test]
+# Cobertura: mínimo de 80% de linhas (requisito do Tech Challenge), checado POR ARQUIVO.
+# `functions = 0` explícito: omitido, o Bun usa o mesmo valor de `lines`, e arquivos
+# com 1–2 funções distorcem (ex: id-generator.ts aparece com 50% de funções e 100% de linhas).
+coverageThreshold = { lines = 0.8, functions = 0.0 }
+coverageSkipTestFiles = true
+coveragePathIgnorePatterns = ["src/generated/**", "test/**"]

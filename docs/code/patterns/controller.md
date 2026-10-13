@@ -14,8 +14,8 @@ Nenhuma das duas tem lógica de negócio, e nenhuma fala com um Repository diret
 import { Elysia } from 'elysia';
 import { ApiError, Envelope, ok } from '../../../../../shared/presentation/http/envelope.js';
 import type { LoginUseCase } from '../../../application/use-cases/login.use-case.js';
-import { LoginRequestSchema, LoginResponseSchema } from '../../dtos/login.dto.js';
-import { LoginResponseDto } from '../../dtos/login.response.dto.js';
+import { LoginRequestSchema } from '../../dtos/login.dto.js';
+import { LoginResponseDto, LoginResponseSchema } from '../../dtos/login.response.dto.js';
 
 export const loginHandler = (login: LoginUseCase) =>
   new Elysia().post(
@@ -95,7 +95,9 @@ export const meHandler = (getMe: GetMeUseCase, auth: AuthPlugin) =>
   );
 ```
 
-O plugin `auth` tem `name`, então o Elysia deduplica e registra uma vez só. `auth: true` é a mesma chave de macro do guard, então não verifica o token duas vezes. *(Isso precisa ser confirmado no e2e da Fase 7 da migração; se o comportamento for outro, esta seção é atualizada.)*
+O plugin `auth` tem `name`, então o Elysia deduplica e registra o macro uma vez só. Mas o `resolve` **roda duas vezes** no mesmo request: uma pelo guard do `index.ts` e outra pelo `auth: true` do handler. Por isso o plugin memoiza a verificação do token por `Request` (numa `WeakMap`), e o token é verificado uma vez só. O teste `test/http-foundation.e2e.spec.ts` conta as chamadas de `verify` e garante isso.
+
+As duas declarações têm papéis diferentes: o guard do `index.ts` é a **regra de proteção** do módulo (e o cadeado no OpenAPI), e o `auth: true` do handler é o que dá o **tipo** do `user` dentro dele.
 
 ## Organização das pastas
 

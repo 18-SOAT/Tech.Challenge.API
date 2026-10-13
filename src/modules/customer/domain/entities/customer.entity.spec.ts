@@ -1,3 +1,4 @@
+import { describe, expect, it } from 'bun:test';
 import { Email } from '../../../../shared/domain/value-objects/email.vo.js';
 import { Document } from '../value-objects/document.vo.js';
 import { Phone } from '../value-objects/phone.vo.js';

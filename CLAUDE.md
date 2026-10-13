@@ -6,7 +6,7 @@ Stack: **Bun** (runtime + gerenciador de pacotes + test runner) + **Elysia** + T
 
 O projeto segue **DDD (Domain-Driven Design)** tático, com **Clean Architecture + Ports & Adapters** (monolito modular, camadas `domain/application/infrastructure/presentation` por módulo). O Elysia fica restrito à camada `presentation/` — domínio e aplicação não conhecem o framework.
 
-> Este repositório é a continuação do `mechanic-system` (NestJS), migrado para Bun + Elysia. O plano e o status da migração estão em [`docs/migration/elysia.md`](docs/migration/elysia.md).
+> Decisões de arquitetura registradas em [`docs/adr/`](docs/adr/) — ex: [ADR 0001](docs/adr/0001-stack-bun-elysia.md), a troca de NestJS para Bun + Elysia.
 
 ## Escopo funcional obrigatório
 
@@ -17,9 +17,17 @@ O projeto segue **DDD (Domain-Driven Design)** tático, com **Clean Architecture
 
 ## Entregáveis da fase
 
-Vídeo (≤15min), documentação DDD (Event Storming dos fluxos de OS e de peças/insumos, diagramas, linguagem ubíqua), código-fonte em repositório privado (Dockerfile + docker-compose + README), relatório de análise de vulnerabilidades, e um PDF com grupo/links/relatório.
+> **Fonte de verdade:** o enunciado `Fase 1 - Tech Challenge-1.pdf` (fora do repositório, em `~/Desktop/Fiap/`). Em caso de dúvida sobre requisito, consulte o PDF, não este resumo.
 
-⚠️ O repositório privado (`github.com/18-SOAT/Tech.Challenge.API`) precisa dar acesso ao usuário **soatarchitecture**.
+A entrega é **um único PDF** com identificação (curso SOAT, fase 1, grupo, nomes, RMs, Discord, tecnologias) e os links abaixo. A avaliação considera **só a branch e o hash de commit informados nele**.
+
+- **Repositório** (`github.com/18-SOAT/Tech.Challenge.API`): **público** durante toda a correção, sem credenciais/tokens/dados sensíveis, versão identificada por branch/tag/hash. Com Dockerfile, `docker-compose.yml`, testes com cobertura ≥ 80% nos domínios críticos, documentação OpenAPI e o relatório da análise de vulnerabilidades.
+- **`main` protegida**: tudo chega nela via Pull Request.
+- **README.md** com, no mínimo: objetivo, descrição da solução, arquitetura, tecnologias, pré-requisitos, como executar, como rodar os testes, como acessar a documentação da API, decisão e justificativa do banco, usuários/credenciais de demonstração ou procedimento de autenticação, estrutura de diretórios, link da documentação DDD e link do vídeo.
+- **Documentação DDD**: link no Miro (ou equivalente) acessível sem pedir permissão, **e** exportada no repositório em `docs/ddd/` (`event-storming.pdf`, `diagramas.pdf`, `linguagem-ubiqua.md`). Deve cobrir Event Storming da criação da OS, do acompanhamento da OS e da gestão de peças/insumos; eventos, comandos, políticas, atores, agregados, entidades, objetos de valor, bounded contexts, linguagem ubíqua, glossário e a relação com o código. Diagramas genéricos ou que não batem com o código não contam.
+- **Vídeo** no YouTube (público, ≤ 15 min, correspondente ao commit informado): proposta, arquitetura e camadas, escolha do banco, Event Storming, elementos de DDD, fluxo de criação/acompanhamento da OS, serviços/peças/insumos, orçamento (geração e aprovação), mudança de status, autenticação, execução, OpenAPI, testes e resultado da análise de vulnerabilidades.
+
+Requisitos funcionais que o PDF detalha além do escopo acima: **registro da aprovação ou rejeição do orçamento**, **validação da placa do veículo** e **tratamento adequado das transações** nos fluxos principais.
 
 A estrutura de pastas, os padrões de código (Use Case, Repository, Handler, tratamento de erro, etc.) e o fluxo de git (branch, commit, PR, changesets) estão documentados em [`docs/code/README.md`](docs/code/README.md) e [`docs/workflow/README.md`](docs/workflow/README.md), respectivamente.
 
@@ -53,7 +61,9 @@ Sempre que for implementar algo, **explique o conceito antes de codar**:
 ## Testes
 
 - Regras de negócio de domínio (entidades, value objects, use cases) têm teste unitário com `bun test`, sem subir o Elysia — teste a classe isolada, com os fakes de `test/fakes/`.
-- Testes de rota ficam em `test/*.e2e.spec.ts`: montam a app com `createApp(depsFake)` e chamam `app.handle(new Request(...))` — sem servidor HTTP real, sem supertest, sem banco.
+- Testes de rota ficam em `test/*.e2e.spec.ts`: montam a app com `makeTestApp()` (`test/fakes/make-test-app.ts` — o `createApp` com fakes no lugar dos adapters) e chamam `app.handle(jsonRequest(...))` (`test/helpers/http.ts`) — sem servidor HTTP real, sem banco.
+- Todo módulo com rota protegida tem e2e chamando a rota **sem token** e esperando 401.
+- Cobertura: `bun run test:cov` exige 80% de linhas **por arquivo** (`bunfig.toml`); o CI roda `bun test --coverage`.
 - Imports de teste vêm de `bun:test` (`describe`, `it`, `expect`, `beforeEach`, `mock`).
 
 ## Fluxo de Changesets

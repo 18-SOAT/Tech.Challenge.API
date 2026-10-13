@@ -1,8 +1,6 @@
 import type { EmployeeRole } from '../../../modules/employee/domain/enums/employee-role.enum.js';
 import { UserType } from '../../../modules/user/domain/enums/user-type.enum.js';
 
-export const TOKEN_SERVICE = Symbol('TOKEN_SERVICE');
-
 // Só identificadores internos. O JWT é assinado, NÃO criptografado — qualquer um
 // decodifica o payload. Nunca coloque aqui CPF/CNPJ, telefone ou hash.
 interface BaseClaims {

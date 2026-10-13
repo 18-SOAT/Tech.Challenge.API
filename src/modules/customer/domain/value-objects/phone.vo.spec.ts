@@ -1,3 +1,5 @@
+import { describe, expect, it } from 'bun:test';
+import { CustomerError, CustomerErrorCode } from '../errors/customer.error.js';
 import { Phone } from './phone.vo.js';
 
 describe('Phone', () => {
@@ -7,7 +9,9 @@ describe('Phone', () => {
   });
 
   it('lança erro sem DDD ou com dígitos a mais', () => {
-    expect(() => Phone.create('98765-4321')).toThrow();
-    expect(() => Phone.create('119876543210')).toThrow();
+    expect(() => Phone.create('98765-4321')).toThrow(CustomerError);
+    expect(() => Phone.create('119876543210')).toThrow(
+      expect.objectContaining({ code: CustomerErrorCode.INVALID_PHONE }),
+    );
   });
 });

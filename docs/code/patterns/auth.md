@@ -29,17 +29,25 @@ Usa a lib `jose` (HS256), e não o `@elysiajs/jwt`, de propósito: o adapter fic
 
 ```typescript
 // shared/presentation/auth/auth.plugin.ts
-export const authPlugin = (tokenService: TokenService) =>
-  new Elysia({ name: 'auth' }).macro({
+export const authPlugin = (tokenService: TokenService) => {
+  const verified = new WeakMap<Request, Promise<AuthTokenPayload>>();
+
+  const verifyOnce = (request: Request, authorization?: string) => {
+    let pending = verified.get(request);
+    if (!pending) {
+      const token = extractBearerToken(authorization); // lança AuthError.tokenMissing()
+      pending = tokenService.verify(token).catch(() => {
+        throw AuthError.tokenInvalid();
+      });
+      verified.set(request, pending);
+    }
+    return pending;
+  };
+
+  return new Elysia({ name: 'auth' }).macro({
     auth: (options: true | { roles: EmployeeRole[] }) => ({
-      async resolve({ headers }) {
-        const [scheme, token] = headers.authorization?.split(' ') ?? [];
-        if (scheme !== 'Bearer' || !token) throw AuthError.tokenMissing();
-
-        const user = await tokenService.verify(token).catch(() => {
-          throw AuthError.tokenInvalid();
-        });
-
+      async resolve({ headers, request }) {
+        const user = await verifyOnce(request, headers.authorization);
         if (options !== true && !(user.type === UserType.EMPLOYEE && options.roles.includes(user.role))) {
           throw AuthError.forbidden();
         }
@@ -47,6 +55,7 @@ export const authPlugin = (tokenService: TokenService) =>
       },
     }),
   });
+};
 
 export type AuthPlugin = ReturnType<typeof authPlugin>;
 ```
@@ -56,6 +65,7 @@ export type AuthPlugin = ReturnType<typeof authPlugin>;
 - **Macro** é um "decorator de rota" do Elysia: uma propriedade customizada (`auth`) que, quando aparece nas opções da rota ou de um `.guard()`, injeta hooks naquela rota.
 - **`resolve`** roda depois da validação e antes do handler, e o que ele retorna **entra no contexto tipado**: depois dele o handler recebe `({ user })` com o tipo `AuthTokenPayload` inferido. Nada de `request.user` sem tipo nem cast.
 - **Lançar `AuthError`** em vez de `return status(401)`: o erro passa pelo `errorHandler` global, então a resposta sai no envelope padrão e o código entra no `STATUS_MAP` (ver [Tratamento de erros](error-handling.md)).
+- **`verifyOnce` (memo por `Request`)**: o guard do `index.ts` e o `auth: true` do handler rodam o `resolve` duas vezes no mesmo request (ver [Controller](controller.md#handler-que-precisa-do-usuário-logado)). A `WeakMap` guarda a verificação daquele request, e ela é liberada junto com o request.
 - **`name: 'auth'`**: o Elysia deduplica plugins com o mesmo nome, então todos os módulos podem fazer `.use(auth)` com a mesma instância sem registrar o macro várias vezes. A instância é criada uma vez no `createApp` e repassada aos módulos.
 
 ## Uso

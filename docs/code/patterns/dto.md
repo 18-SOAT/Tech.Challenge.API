@@ -33,7 +33,8 @@ export type RegisterRequest = typeof RegisterRequestSchema.static;
 ```
 
 - **`error`**: a mensagem que vai para o `message` do envelope de erro. Sem ela, o cliente recebe uma mensagem técnica do TypeBox.
-- **`additionalProperties: false`**: rejeita (400) campos que não estão no contrato, em vez de ignorá-los calado. Um campo inesperado no body costuma ser bug do cliente ou tentativa de mass assignment (ex: mandar `"type": "EMPLOYEE"` no cadastro).
+- **Campos fora do contrato são descartados** antes de o handler rodar. O Elysia *normaliza* o input contra o schema (padrão `normalize: true`): o que não está declarado é removido, então um `"type": "EMPLOYEE"` enviado no cadastro (mass assignment) nunca chega ao use case. O `additionalProperties: false` continua no schema para documentar no OpenAPI que o objeto é fechado.
+- A mesma normalização vale na **saída**: um campo que não está no schema de `response` é cortado antes de sair. É uma segunda camada de whitelist, além do Response DTO (ver abaixo).
 - **`examples`**: aparece no OpenAPI.
 
 ### Formatos customizados: a mesma função pura do domínio

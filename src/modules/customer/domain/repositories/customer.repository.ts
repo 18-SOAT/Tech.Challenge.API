@@ -1,6 +1,4 @@
-import { Customer } from '../entities/customer.entity.js';
-
-export const CUSTOMER_REPOSITORY = Symbol('CUSTOMER_REPOSITORY');
+import type { Customer } from '../entities/customer.entity.js';
 
 export interface CustomerRepository {
   findByDocument(document: string): Promise<Customer | null>;

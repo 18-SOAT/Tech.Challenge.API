@@ -1,3 +1,5 @@
+import { UserError } from '../errors/user.error.js';
+
 // Senha em texto puro, validada ANTES do hash. Nunca é persistida nem logada.
 const MIN_LENGTH = 8;
 // O bcrypt só considera os primeiros 72 bytes: acima disso, duas senhas diferentes
@@ -9,10 +11,10 @@ export class Password {
 
   static create(raw: string): Password {
     if (raw.length < MIN_LENGTH) {
-      throw new Error(`A senha deve ter no mínimo ${MIN_LENGTH} caracteres.`);
+      throw UserError.passwordTooShort(MIN_LENGTH);
     }
     if (Buffer.byteLength(raw, 'utf8') > MAX_BYTES) {
-      throw new Error(`A senha deve ter no máximo ${MAX_BYTES} bytes.`);
+      throw UserError.passwordTooLong(MAX_BYTES);
     }
     return new Password(raw);
   }

@@ -1,3 +1,4 @@
+import { describe, expect, it } from 'bun:test';
 import { EmployeeRole } from '../../../employee/domain/enums/employee-role.enum.js';
 import { UserType } from '../../../user/domain/enums/user-type.enum.js';
 import { AuthenticatedUserResponseDto } from './authenticated-user.response.dto.js';

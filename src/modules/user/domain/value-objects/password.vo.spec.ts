@@ -1,3 +1,5 @@
+import { describe, expect, it } from 'bun:test';
+import { UserError, UserErrorCode } from '../errors/user.error.js';
 import { Password } from './password.vo.js';
 
 describe('Password', () => {
@@ -7,6 +9,13 @@ describe('Password', () => {
 
   it('rejeita senha com menos de 8 caracteres', () => {
     expect(() => Password.create('1234567')).toThrow('no mínimo 8');
+  });
+
+  it('lança UserError com code USER_INVALID_PASSWORD', () => {
+    expect(() => Password.create('1234567')).toThrow(UserError);
+    expect(() => Password.create('a'.repeat(73))).toThrow(
+      expect.objectContaining({ code: UserErrorCode.INVALID_PASSWORD }),
+    );
   });
 
   it('rejeita senha acima de 72 bytes (limite do bcrypt)', () => {

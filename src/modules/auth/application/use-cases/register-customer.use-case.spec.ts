@@ -1,9 +1,17 @@
-import { BadRequestException, ConflictException } from '@nestjs/common';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import { FakePasswordHasher } from '../../../../../test/fakes/fake-password-hasher.js';
 import { InMemoryCustomerRepository } from '../../../../../test/fakes/in-memory-customer.repository.js';
 import { InMemoryCustomerRegistrationRepository } from '../../../../../test/fakes/in-memory-customer-registration.repository.js';
 import { InMemoryUserRepository } from '../../../../../test/fakes/in-memory-user.repository.js';
+import {
+  CustomerError,
+  CustomerErrorCode,
+} from '../../../customer/domain/errors/customer.error.js';
 import { UserType } from '../../../user/domain/enums/user-type.enum.js';
+import {
+  UserError,
+  UserErrorCode,
+} from '../../../user/domain/errors/user.error.js';
 import {
   type RegisterCustomerInput,
   RegisterCustomerUseCase,
@@ -55,7 +63,9 @@ describe('RegisterCustomerUseCase', () => {
         email: 'JOAO@oficina.com',
         document: '11222333000181',
       }),
-    ).rejects.toThrow(ConflictException);
+    ).rejects.toThrow(
+      expect.objectContaining({ code: UserErrorCode.EMAIL_ALREADY_IN_USE }),
+    );
   });
 
   it('rejeita CPF/CNPJ já cadastrado, mesmo com máscara diferente', async () => {
@@ -67,13 +77,24 @@ describe('RegisterCustomerUseCase', () => {
         email: 'outro@oficina.com',
         document: '52998224725',
       }),
-    ).rejects.toThrow('CPF/CNPJ já cadastrado.');
+    ).rejects.toThrow(CustomerError);
+    await expect(
+      useCase.execute({
+        ...input,
+        email: 'outro2@oficina.com',
+        document: '52998224725',
+      }),
+    ).rejects.toThrow(
+      expect.objectContaining({
+        code: CustomerErrorCode.DOCUMENT_ALREADY_IN_USE,
+      }),
+    );
   });
 
   it('rejeita senha fraca sem gravar nada', async () => {
     await expect(
       useCase.execute({ ...input, password: '123' }),
-    ).rejects.toThrow(BadRequestException);
+    ).rejects.toThrow(UserError);
     expect(users.items).toHaveLength(0);
     expect(customers.items).toHaveLength(0);
   });

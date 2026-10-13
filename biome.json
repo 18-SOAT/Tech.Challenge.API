@@ -24,7 +24,7 @@
 				"noStaticOnlyClass": "off"
 			},
 			"style": {
-				"useImportType": "off"
+				"useImportType": "error"
 			},
 			"nursery": {
 				"noFloatingPromises": "warn"
@@ -32,9 +32,6 @@
 		}
 	},
 	"javascript": {
-		"parser": {
-			"unsafeParameterDecoratorsEnabled": true
-		},
 		"formatter": {
 			"quoteStyle": "single",
 			"trailingCommas": "all"

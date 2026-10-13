@@ -1,4 +1,4 @@
-import { UnauthorizedException } from '@nestjs/common';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import {
   makeCustomer,
   makeUser,
@@ -7,6 +7,7 @@ import { InMemoryCustomerRepository } from '../../../../../test/fakes/in-memory-
 import { InMemoryEmployeeRepository } from '../../../../../test/fakes/in-memory-employee.repository.js';
 import { InMemoryUserRepository } from '../../../../../test/fakes/in-memory-user.repository.js';
 import { UserType } from '../../../user/domain/enums/user-type.enum.js';
+import { AuthErrorCode } from '../../domain/errors/auth.error.js';
 import { AuthClaimsResolver } from '../services/auth-claims.resolver.js';
 import { GetMeUseCase } from './get-me.use-case.js';
 
@@ -38,18 +39,18 @@ describe('GetMeUseCase', () => {
 
   it('rejeita usuário removido, desativado ou sem perfil depois da emissão do token', async () => {
     await expect(useCase.execute('user-1')).rejects.toThrow(
-      UnauthorizedException,
+      expect.objectContaining({ code: AuthErrorCode.USER_UNAVAILABLE }),
     );
 
     users.items.push(makeUser());
     await expect(useCase.execute('user-1')).rejects.toThrow(
-      UnauthorizedException,
+      expect.objectContaining({ code: AuthErrorCode.USER_UNAVAILABLE }),
     );
 
     users.items[0] = makeUser({ active: false });
     customers.items.push(makeCustomer('user-1'));
     await expect(useCase.execute('user-1')).rejects.toThrow(
-      UnauthorizedException,
+      expect.objectContaining({ code: AuthErrorCode.USER_UNAVAILABLE }),
     );
   });
 });

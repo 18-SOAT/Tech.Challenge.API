@@ -70,7 +70,8 @@ src/
     ├── infrastructure/
     └── presentation/
         ├── http/                          → envelope, ok(), ApiError, errorHandler, formats
-        └── auth/                          → plugin auth (macro)
+        ├── auth/                          → plugin auth (macro)
+        └── health/                        → GET /health
 ```
 
 **Só crie uma pasta quando existir o primeiro arquivo dela.** A árvore acima mostra onde cada coisa vai, não uma lista de pastas pra criar vazias.
@@ -99,4 +100,4 @@ src/
 
 ## Relacionado
 
-O fluxo de git (branch, commits, PRs, changesets) está em [`../workflow/README.md`](../workflow/README.md). O diagrama do banco está em [`../diagrams/database.drawio`](../diagrams/database.drawio).
+O fluxo de git (branch, commits, PRs, changesets) está em [`../workflow/README.md`](../workflow/README.md). O diagrama do banco está em [`../diagrams/database.drawio`](../diagrams/database.drawio). Decisões de arquitetura (ADRs) estão em [`../adr/`](../adr/).

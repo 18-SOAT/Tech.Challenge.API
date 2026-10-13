@@ -1,6 +1,6 @@
 import type { Employee as PrismaEmployee } from '../../../../generated/prisma/client.js';
 import { Employee } from '../../domain/entities/employee.entity.js';
-import { EmployeeRole } from '../../domain/enums/employee-role.enum.js';
+import type { EmployeeRole } from '../../domain/enums/employee-role.enum.js';
 
 export class EmployeeMapper {
   static toEntity(record: PrismaEmployee): Employee {

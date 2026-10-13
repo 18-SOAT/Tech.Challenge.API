@@ -1,9 +1,9 @@
-import {
+import type {
   Prisma,
   User as PrismaUser,
 } from '../../../../generated/prisma/client.js';
 import { User } from '../../domain/entities/user.entity.js';
-import { UserType } from '../../domain/enums/user-type.enum.js';
+import type { UserType } from '../../domain/enums/user-type.enum.js';
 
 export class UserMapper {
   static toEntity(record: PrismaUser): User {

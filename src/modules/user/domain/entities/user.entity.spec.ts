@@ -1,3 +1,4 @@
+import { describe, expect, it } from 'bun:test';
 import { FakePasswordHasher } from '../../../../../test/fakes/fake-password-hasher.js';
 import { Email } from '../../../../shared/domain/value-objects/email.vo.js';
 import { UserType } from '../enums/user-type.enum.js';

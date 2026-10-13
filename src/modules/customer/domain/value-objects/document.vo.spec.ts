@@ -1,3 +1,5 @@
+import { describe, expect, it } from 'bun:test';
+import { CustomerError, CustomerErrorCode } from '../errors/customer.error.js';
 import { Document } from './document.vo.js';
 
 describe('Document', () => {
@@ -13,6 +15,10 @@ describe('Document', () => {
   it('lança erro pra documento inválido', () => {
     expect(() => Document.create('123.456.789-00')).toThrow(
       'CPF/CNPJ inválido.',
+    );
+    expect(() => Document.create('123.456.789-00')).toThrow(CustomerError);
+    expect(() => Document.create('123.456.789-00')).toThrow(
+      expect.objectContaining({ code: CustomerErrorCode.INVALID_DOCUMENT }),
     );
   });
 });

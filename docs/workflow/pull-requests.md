@@ -12,4 +12,3 @@ Comentários de revisão e a descrição do PR são escritos em **português (PT
 - [ ] `bun run typecheck` passa (o Bun não checa tipos ao rodar; só esse script pega erro de tipo).
 - [ ] `bun test` passa, com testes cobrindo a mudança (ver `CLAUDE.md`, seção "Testes").
 - [ ] Rota nova ou alterada conferida em `/openapi` (ver [checklist de rota](../code/libs/openapi.md#checklist-de-rota-nova)).
-- [ ] Se o PR avança a migração, o checklist de [`docs/migration/elysia.md`](../migration/elysia.md) foi atualizado.

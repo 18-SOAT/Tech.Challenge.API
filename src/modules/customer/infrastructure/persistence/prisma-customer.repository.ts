@@ -1,12 +1,10 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../../../../shared/infrastructure/prisma/prisma.service.js';
-import { Customer } from '../../domain/entities/customer.entity.js';
-import { CustomerRepository } from '../../domain/repositories/customer.repository.js';
+import type { PrismaClient } from '../../../../shared/infrastructure/prisma/client.js';
+import type { Customer } from '../../domain/entities/customer.entity.js';
+import type { CustomerRepository } from '../../domain/repositories/customer.repository.js';
 import { CustomerMapper } from './customer.mapper.js';
 
-@Injectable()
 export class PrismaCustomerRepository implements CustomerRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaClient) {}
 
   async findByDocument(document: string): Promise<Customer | null> {
     const record = await this.prisma.customer.findUnique({
