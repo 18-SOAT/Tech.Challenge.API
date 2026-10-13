@@ -1,18 +1,20 @@
 # Changesets
 
-1. Toda mudança relevante em um PR deve incluir `pnpm changeset` (gera um `.md` em `.changeset/` descrevendo o bump e o resumo). O CI (`changeset-check` em `ci.yml`) falha o PR se faltar.
-2. Mudança que não deve gerar release (ex: só doc) pode usar `pnpm exec changeset add --empty`.
-3. Ao mergear na `main`, o workflow `release.yml` roda a action `changesets/action`: se houver changesets pendentes, ela abre/atualiza sozinha um PR "Version Packages" com o bump de versão + `CHANGELOG.md` prontos. Ninguém escreve a versão na mão — só revisa e mergeia esse PR.
-4. `changelog` está configurado como o gerador padrão (`@changesets/cli/changelog`, sem links do GitHub). Para ter changelog com links de PR/commit/autor, instalar `@changesets/changelog-github` e trocar o campo `"changelog"` do `.changeset/config.json` para `["@changesets/changelog-github", { "repo": "18SOAT/mechanic-system" }]`.
-5. `baseBranch` no `.changeset/config.json` é `"main"`, que é o branch padrão do repositório (`github.com/18SOAT/mechanic-system`).
+Changesets dá **versionamento rastreável**: cada PR declara o que mudou e qual o tamanho do bump (patch/minor/major), e a versão + `CHANGELOG.md` são gerados disso, sem ninguém editar a versão na mão. A versão do `package.json` também aparece no OpenAPI (ver [openapi.md](../code/libs/openapi.md)).
+
+1. Toda mudança relevante num PR inclui um `bun run changeset` (gera um `.md` em `.changeset/` com o bump e o resumo). O CI (`changeset-check` em `ci.yml`) falha o PR se faltar.
+2. Mudança que não deve gerar release (ex: só doc) usa `bunx changeset add --empty`.
+3. Ao mergear na `main`, o workflow `release.yml` roda a action `changesets/action`. Se houver changesets pendentes, ela abre ou atualiza sozinha um PR "Version Packages" com o bump de versão e o `CHANGELOG.md` prontos. Você só revisa e mergeia esse PR.
+4. O `changelog` está configurado com o gerador padrão (`@changesets/cli/changelog`, sem links do GitHub). Para ter changelog com links de PR/commit, instale `@changesets/changelog-github` e troque o campo `"changelog"` do `.changeset/config.json` para `["@changesets/changelog-github", { "repo": "18-SOAT/Tech.Challenge.API" }]`.
+5. `baseBranch` no `.changeset/config.json` é `"main"`, o branch padrão de `github.com/18-SOAT/Tech.Challenge.API`.
 
 ## Categoria do resumo
 
-O resumo escrito no `pnpm changeset` (o texto que vai pro `CHANGELOG.md`) começa com uma das categorias abaixo, em português — isso é independente do `<tipo>` do commit/branch (que fica em inglês, ver [commits.md](commits.md)), porque o changeset é lido por qualquer pessoa consultando o changelog, não só por quem mexe no código:
+O resumo escrito no `bun run changeset` (o texto que vai para o `CHANGELOG.md`) começa com uma das categorias abaixo, em português. Isso é independente do `<tipo>` do commit/branch (que fica em inglês, ver [commits.md](commits.md)), porque o changeset é lido por qualquer pessoa que consulta o changelog, não só por quem mexe no código:
 
-- **Melhoria:** — funcionalidade nova ou melhoria em algo que já existe.
-- **Correção:** — correção de bug.
-- **Ajuste:** — mudança pontual sem impacto funcional direto (refatoração, configuração, formatação, etc.).
+- **Melhoria:** funcionalidade nova ou melhoria em algo que já existe.
+- **Correção:** correção de bug.
+- **Ajuste:** mudança pontual sem impacto funcional direto (refatoração, configuração, formatação etc.).
 
 Exemplos:
 

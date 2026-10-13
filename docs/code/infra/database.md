@@ -1,42 +1,45 @@
 # Database (Prisma)
 
-## `PrismaService` — genérico, compartilhado
+## Cliente Prisma: uma instância, criada no container compartilhado
 
 ```typescript
-// shared/infrastructure/prisma/prisma.service.ts
-@Injectable()
-export class PrismaService extends PrismaClient implements OnModuleDestroy {
-  constructor() {
-    super({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
-  }
+// shared/infrastructure/prisma/client.ts
+import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaClient } from '../../../generated/prisma/client.js';
 
-  async onModuleDestroy() {
-    await this.$disconnect();
-  }
-}
+export const createPrismaClient = (connectionString: string) =>
+  new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
 ```
+
+```typescript
+// shared/shared.container.ts
+const prisma = createPrismaClient(env.DATABASE_URL);
+```
+
+Uma única instância para a aplicação inteira (um pool de conexões só), criada no `shared.container.ts` e repassada aos repositories pelo construtor. O cliente não sabe nada sobre `Customer`, `Vehicle` ou qualquer conceito de negócio: ele só gerencia a conexão.
 
 ### Conexão lazy (sem `$connect` no boot)
 
-O Prisma conecta sozinho na primeira query, então não existe `onModuleInit` chamando `$connect()`.
+O Prisma conecta sozinho na primeira query, então não existe `$connect()` no startup.
 
-- **Ganho:** a aplicação sobe sem banco. É isso que deixa o e2e do CI (que sobe o `AppModule` inteiro e não tem Postgres) passar.
-- **Custo:** perde o fail-fast. Um `DATABASE_URL` errado não derruba o boot, só aparece na primeira query. Quando existir health check, ele deve fazer um `SELECT 1` pra cobrir isso.
+- **Ganho:** a aplicação sobe sem banco. É isso que deixa o e2e (que monta a app com fakes) e o CI rodarem sem Postgres.
+- **Custo:** perde o fail-fast. Um `DATABASE_URL` errado não derruba o boot, só aparece na primeira query. Hoje o `GET /health` só confirma que o processo está de pé. Para cobrir isso, ele deve passar a fazer um `SELECT 1`.
+
+### Desligamento
 
 ```typescript
-// shared/infrastructure/prisma/prisma.module.ts
-@Global()
-@Module({
-  providers: [PrismaService],
-  exports: [PrismaService],
-})
-export class PrismaModule {}
+// server.ts
+app.onStop(() => container.prisma.$disconnect());
 ```
 
-Importado uma vez no `AppModule`. O `PrismaService` não sabe nada sobre `Customer`, `Vehicle`, ou qualquer conceito de negócio — ele só gerencia o ciclo de vida da conexão.
+Fecha o pool de conexões quando o servidor para, sem deixar conexões penduradas no Postgres a cada restart.
+
+## Código gerado
+
+O `prisma generate` (roda no `postinstall`) escreve o client em `src/generated/prisma/`, que está no `.gitignore`. O schema é `prisma/schema.prisma` e a configuração (migrations, datasource) é `prisma.config.ts`.
 
 ## Repositories concretos ficam em cada módulo de negócio, não aqui
 
-`PrismaCustomerRepository`, `PrismaVehicleRepository`, etc. são específicos do seu aggregate (conhecem o formato da tabela, as queries específicas que aquele aggregate precisa) e ficam em `modules/xxx/infrastructure/persistence/`, injetando o `PrismaService` internamente. Ver [Repository](../patterns/repository.md) pra o detalhamento completo de interface/implementação/mapper.
+`PrismaCustomerRepository`, `PrismaVehicleRepository` etc. são específicos do seu aggregate (conhecem o formato da tabela e as queries que aquele aggregate precisa). Eles ficam em `modules/xxx/infrastructure/persistence/` e recebem o `PrismaClient` no construtor. Ver [Repository](../patterns/repository.md) para interface/implementação/mapper.
 
-Não coloque nada específico de negócio em `shared/infrastructure/prisma/` além do próprio `PrismaService`.
+Não coloque nada específico de negócio em `shared/infrastructure/prisma/`.

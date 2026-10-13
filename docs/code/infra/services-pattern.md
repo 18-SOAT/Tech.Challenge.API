@@ -1,49 +1,52 @@
 # Padrão de services (Port & Adapter)
 
-Conexões de banco, envio de email, cache — nenhum desses faz parte da linguagem ubíqua do negócio (ninguém, numa sessão de Event Storming, diz "Redis"). No vocabulário estratégico do DDD, esses são **Generic Subdomains**: capacidades de suporte técnico, não o modelo de domínio central. Eles são tratados com a ideia de **Port & Adapter** da Hexagonal Architecture, que na prática é a mesma ideia de Dependency Inversion por trás do [Repository](../patterns/repository.md), generalizada pra além da persistência.
+Conexão de banco, envio de e-mail, cache: nenhum desses faz parte da linguagem ubíqua do negócio (ninguém, numa sessão de Event Storming, diz "Redis"). No vocabulário estratégico do DDD, eles são **Generic Subdomains**: capacidades técnicas de suporte, não o modelo de domínio central. São tratados com a ideia de **Port & Adapter** da Hexagonal Architecture, que na prática é a mesma inversão de dependência do [Repository](../patterns/repository.md), generalizada para além da persistência.
 
 ## Receita
 
-1. **Port** — uma interface + um injection token (`Symbol`), pertencente de forma genérica (não a nenhum módulo de negócio específico):
+1. **Port**: uma interface, sem dono de negócio:
 
 ```typescript
 // shared/infrastructure/xxx/xxx.port.ts
-export const XXX = Symbol('XXX');
-
 export interface Xxx {
   doSomething(): Promise<void>;
 }
 ```
 
-2. **Adapter** — a implementação concreta, específica da tecnologia:
+2. **Adapter**: a implementação concreta, específica da tecnologia. Recebe configuração pelo construtor e não lê `process.env` diretamente:
 
 ```typescript
-@Injectable()
+// shared/infrastructure/xxx/concrete-xxx.adapter.ts
 export class ConcreteXxxAdapter implements Xxx {
+  constructor(private readonly config: { url: string }) {}
   async doSomething(): Promise<void> { /* código específico do vendor */ }
 }
 ```
 
-3. **Módulo global** — conecta o token ao adapter, importado uma única vez:
+3. **Instância única no container compartilhado**, criada uma vez e repassada a quem precisa:
 
 ```typescript
-@Global()
-@Module({
-  providers: [{ provide: XXX, useClass: ConcreteXxxAdapter }],
-  exports: [XXX],
-})
-export class XxxModule {}
+// shared/shared.container.ts
+export function makeSharedContainer(env: Env) {
+  return {
+    prisma: createPrismaClient(env.DATABASE_URL),
+    tokenService: new JoseTokenService({ secret: env.JWT_SECRET, expiresIn: env.JWT_EXPIRES_IN }) as TokenService,
+    passwordHasher: new BcryptPasswordHasher() as PasswordHasher,
+    xxx: new ConcreteXxxAdapter({ url: env.XXX_URL }) as Xxx,
+  };
+}
+export type SharedContainer = ReturnType<typeof makeSharedContainer>;
 ```
 
-Use Cases dos módulos de negócio injetam pelo token (`@Inject(XXX)`), tipados pela interface da port — nunca pelo adapter concreto diretamente.
+Os containers de módulo recebem o `SharedContainer` e repassam aos use cases, sempre tipados pela interface do port, nunca pelo adapter concreto.
 
-## Cuidado com nomenclatura: dois significados diferentes de "Service"
+## Cuidado com nomenclatura: dois significados de "Service"
 
-- **Domain Service** (pattern tático do DDD) — lógica de negócio pura que não pertence naturalmente a nenhuma Entity. Sem I/O, sem import de framework. Fica em `domain/services/`.
-- **Infrastructure Service** (convenção do Nest: `PrismaService`, `NodemailerEmailService`, `RedisCacheService`) — um adapter específico de tecnologia. Fica em `infrastructure/`.
+- **Domain Service** (pattern tático do DDD): lógica de negócio pura que não pertence naturalmente a nenhuma Entity. Sem I/O, sem import de framework. Fica em `domain/services/`.
+- **Infrastructure Service/Adapter** (`JoseTokenService`, `NodemailerEmailService`, `RedisCache`): adapter específico de tecnologia. Fica em `infrastructure/`.
 
-Mesmo sufixo, conceitos sem relação — não confunda os dois ao ler ou escrever código.
+Mesmo sufixo, conceitos sem relação. Não confunda os dois ao ler ou escrever código.
 
-## Exemplo de referência: `PrismaService`
+## Exemplo de referência: cliente Prisma
 
-Genérico, não sabe nada sobre `Customer`/`Vehicle`/qualquer coisa específica de negócio — só gerencia o ciclo de vida da conexão (`onModuleInit`/`onModuleDestroy`). Ver [database.md](database.md).
+Genérico, não sabe nada sobre `Customer`/`Vehicle` nem sobre qualquer conceito de negócio. Só gerencia a conexão. Ver [database.md](database.md).

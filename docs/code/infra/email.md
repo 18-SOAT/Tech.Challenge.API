@@ -1,11 +1,11 @@
 # Email
 
+> Ainda não implementado. Este doc define o formato para quando entrar (ex: notificar o cliente sobre mudança de status da OS ou orçamento para aprovar).
+
 ## Port genérica
 
 ```typescript
 // shared/infrastructure/email/email-sender.port.ts
-export const EMAIL_SENDER = Symbol('EMAIL_SENDER');
-
 export interface EmailSender {
   send(params: { to: string; subject: string; body: string }): Promise<void>;
 }
@@ -13,48 +13,38 @@ export interface EmailSender {
 
 ```typescript
 // shared/infrastructure/email/nodemailer-email.service.ts
-@Injectable()
 export class NodemailerEmailService implements EmailSender {
+  constructor(private readonly config: { host: string; port: number; from: string }) {}
+
   async send(params: { to: string; subject: string; body: string }): Promise<void> {
     // chamada específica do vendor (Nodemailer/SES/Resend/...)
   }
 }
 ```
 
-```typescript
-// shared/infrastructure/email/email.module.ts
-@Global()
-@Module({
-  providers: [{ provide: EMAIL_SENDER, useClass: NodemailerEmailService }],
-  exports: [EMAIL_SENDER],
-})
-export class EmailModule {}
-```
-
-Essa port genérica só sabe "enviar um email" — ela não faz ideia do que é uma notificação de atualização de status. Ver [services-pattern.md](services-pattern.md) pra a receita geral.
+Instanciada uma vez no `shared.container.ts` como `emailSender: EmailSender` (ver [services-pattern.md](services-pattern.md)). Essa port genérica só sabe "enviar um e-mail"; ela não faz ideia do que é uma notificação de atualização de status.
 
 ## Mailer por módulo (padrão catalog)
 
-Emails específicos de negócio (com seus templates) ficam num Mailer por módulo, um método por tipo de email — ver [Padrão catalog](../patterns/catalog-pattern.md):
+E-mails específicos de negócio (com seus templates) ficam num Mailer por módulo, com um método por tipo de e-mail. Ver [Padrão catalog](../patterns/catalog-pattern.md):
 
 ```typescript
 // modules/service-order/infrastructure/mailers/service-order.mailer.ts
-@Injectable()
 export class ServiceOrderMailer {
-  constructor(@Inject(EMAIL_SENDER) private readonly emailSender: EmailSender) {}
+  constructor(private readonly emailSender: EmailSender) {}
 
   async sendStatusUpdated(params: { to: string; customerName: string; plate: string; newStatus: string }) {
     const html = renderTemplate('service-order-status-updated', params);
     await this.emailSender.send({ to: params.to, subject: 'Atualização da sua Ordem de Serviço', body: html });
   }
 
-  async sendQuoteApproved(params: { to: string; customerName: string; amount: number }) {
-    const html = renderTemplate('service-order-quote-approved', params);
-    await this.emailSender.send({ to: params.to, subject: 'Orçamento aprovado', body: html });
+  async sendQuoteReady(params: { to: string; customerName: string; amount: number }) {
+    const html = renderTemplate('service-order-quote-ready', params);
+    await this.emailSender.send({ to: params.to, subject: 'Orçamento disponível para aprovação', body: html });
   }
 }
 ```
 
-**Não** construa um único método genérico `mailer.send(EmailType.STATUS_UPDATED, data)` — ver [Padrão catalog](../patterns/catalog-pattern.md) pro motivo (perde type safety por chamada, fica mais difícil de testar, menos autoexplicativo).
+**Não** construa um único método genérico `mailer.send(EmailType.STATUS_UPDATED, data)`. O motivo está no [Padrão catalog](../patterns/catalog-pattern.md): perde type safety por chamada, fica mais difícil de testar e se explica menos.
 
-Um Use Case injeta o Mailer específico que precisa, chama o método nomeado, e nunca toca na renderização de template nem na `EmailSender` genérica diretamente.
+Um Use Case recebe o Mailer específico que precisa, chama o método nomeado e nunca toca na renderização de template nem na `EmailSender` genérica diretamente. O Mailer é montado no container do módulo (`new ServiceOrderMailer(shared.emailSender)`).
