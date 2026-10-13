@@ -1,9 +1,5 @@
-import { Customer } from '../../../customer/domain/entities/customer.entity.js';
-import { User } from '../../../user/domain/entities/user.entity.js';
-
-export const CUSTOMER_REGISTRATION_REPOSITORY = Symbol(
-  'CUSTOMER_REGISTRATION_REPOSITORY',
-);
+import type { Customer } from '../../../customer/domain/entities/customer.entity.js';
+import type { User } from '../../../user/domain/entities/user.entity.js';
 
 // Port nomeado pela operação de negócio, não por tabela: o cadastro cria User + Customer
 // e precisa ser atômico — ou os dois existem, ou nenhum (sem login órfão).

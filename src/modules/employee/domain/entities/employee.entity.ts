@@ -1,4 +1,4 @@
-import { EmployeeRole } from '../enums/employee-role.enum.js';
+import type { EmployeeRole } from '../enums/employee-role.enum.js';
 
 // Por enquanto só leitura (restore) — o login precisa do id e do role.
 // TODO: create() e regras de negócio quando existir o CRUD de funcionários (feito por ADMIN).

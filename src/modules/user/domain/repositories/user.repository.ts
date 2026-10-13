@@ -1,6 +1,4 @@
-import { User } from '../entities/user.entity.js';
-
-export const USER_REPOSITORY = Symbol('USER_REPOSITORY');
+import type { User } from '../entities/user.entity.js';
 
 export interface UserRepository {
   findById(id: string): Promise<User | null>;

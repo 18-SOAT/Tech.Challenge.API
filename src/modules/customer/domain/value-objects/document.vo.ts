@@ -1,16 +1,16 @@
+import { CustomerError } from '../errors/customer.error.js';
 import {
   isValidDocument,
   onlyDigits,
 } from '../validators/is-valid-document.js';
 
-// TODO: trocar os `throw new Error` dos VOs por CustomerError (DomainError) + DomainExceptionFilter.
 // CPF (11 dígitos) ou CNPJ (14), persistido só com dígitos.
 export class Document {
   private constructor(readonly value: string) {}
 
   static create(raw: string): Document {
     if (!isValidDocument(raw)) {
-      throw new Error('CPF/CNPJ inválido.');
+      throw CustomerError.invalidDocument();
     }
     return new Document(onlyDigits(raw));
   }

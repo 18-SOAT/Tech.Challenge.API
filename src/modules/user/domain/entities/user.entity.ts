@@ -1,7 +1,7 @@
 import { IdGenerator } from '../../../../shared/domain/id-generator.js';
 import { Email } from '../../../../shared/domain/value-objects/email.vo.js';
-import { UserType } from '../enums/user-type.enum.js';
-import { PasswordHasher } from '../ports/password-hasher.port.js';
+import type { UserType } from '../enums/user-type.enum.js';
+import type { PasswordHasher } from '../ports/password-hasher.port.js';
 
 export class User {
   private constructor(
