@@ -1,4 +1,4 @@
-import { UnauthorizedException } from '@nestjs/common';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import {
   makeCustomer,
   makeEmployee,
@@ -11,6 +11,7 @@ import { InMemoryEmployeeRepository } from '../../../../../test/fakes/in-memory-
 import { InMemoryUserRepository } from '../../../../../test/fakes/in-memory-user.repository.js';
 import { EmployeeRole } from '../../../employee/domain/enums/employee-role.enum.js';
 import { UserType } from '../../../user/domain/enums/user-type.enum.js';
+import { AuthError, AuthErrorCode } from '../../domain/errors/auth.error.js';
 import { AuthClaimsResolver } from '../services/auth-claims.resolver.js';
 import { LoginUseCase } from './login.use-case.js';
 
@@ -78,13 +79,18 @@ describe('LoginUseCase', () => {
 
     await expect(
       useCase.execute({ email: 'joao@oficina.com', password: 'senha-errada' }),
-    ).rejects.toThrow(new UnauthorizedException('Credenciais inválidas.'));
+    ).rejects.toThrow(
+      expect.objectContaining({
+        code: AuthErrorCode.INVALID_CREDENTIALS,
+        message: 'Credenciais inválidas.',
+      }),
+    );
   });
 
   it('e-mail inexistente: mesma mensagem E ainda executa o compare (anti-timing)', async () => {
     await expect(
       useCase.execute({ email: 'ninguem@oficina.com', password: 'qualquer' }),
-    ).rejects.toThrow('Credenciais inválidas.');
+    ).rejects.toThrow(AuthError);
     expect(hasher.compareCalls).toBe(1);
   });
 

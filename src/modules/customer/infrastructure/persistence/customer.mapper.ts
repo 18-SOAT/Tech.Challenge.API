@@ -1,4 +1,4 @@
-import {
+import type {
   Prisma,
   Customer as PrismaCustomer,
 } from '../../../../generated/prisma/client.js';

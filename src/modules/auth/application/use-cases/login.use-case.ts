@@ -1,19 +1,12 @@
-import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
-import { UseCase } from '../../../../shared/application/use-case.interface.js';
-import {
-  type AuthTokenPayload,
-  TOKEN_SERVICE,
-  type TokenService,
+import type { UseCase } from '../../../../shared/application/use-case.interface.js';
+import type {
+  AuthTokenPayload,
+  TokenService,
 } from '../../../../shared/infrastructure/jwt/token-service.port.js';
-import {
-  PASSWORD_HASHER,
-  type PasswordHasher,
-} from '../../../user/domain/ports/password-hasher.port.js';
-import {
-  USER_REPOSITORY,
-  type UserRepository,
-} from '../../../user/domain/repositories/user.repository.js';
-import { AuthClaimsResolver } from '../services/auth-claims.resolver.js';
+import type { PasswordHasher } from '../../../user/domain/ports/password-hasher.port.js';
+import type { UserRepository } from '../../../user/domain/repositories/user.repository.js';
+import { AuthError } from '../../domain/errors/auth.error.js';
+import type { AuthClaimsResolver } from '../services/auth-claims.resolver.js';
 
 export interface LoginInput {
   email: string;
@@ -25,17 +18,15 @@ export interface LoginOutput {
   user: AuthTokenPayload;
 }
 
-// TODO: throws padronizados — trocar UnauthorizedException por AuthError (DomainError).
-// TODO: rate limiting nesta rota (@nestjs/throttler) contra força bruta.
-@Injectable()
+// TODO: rate limiting na rota de login contra força bruta.
 export class LoginUseCase implements UseCase<LoginInput, LoginOutput> {
   // Hash descartável pra comparar quando o e-mail não existe (ver execute).
   private dummyHash?: Promise<string>;
 
   constructor(
-    @Inject(USER_REPOSITORY) private readonly userRepository: UserRepository,
-    @Inject(PASSWORD_HASHER) private readonly passwordHasher: PasswordHasher,
-    @Inject(TOKEN_SERVICE) private readonly tokenService: TokenService,
+    private readonly userRepository: UserRepository,
+    private readonly passwordHasher: PasswordHasher,
+    private readonly tokenService: TokenService,
     private readonly authClaimsResolver: AuthClaimsResolver,
   ) {}
 
@@ -51,7 +42,7 @@ export class LoginUseCase implements UseCase<LoginInput, LoginOutput> {
         input.password,
         await this.getDummyHash(),
       );
-      throw this.invalidCredentials();
+      throw AuthError.invalidCredentials();
     }
 
     const passwordMatches = await user.verifyPassword(
@@ -59,21 +50,16 @@ export class LoginUseCase implements UseCase<LoginInput, LoginOutput> {
       this.passwordHasher,
     );
     if (!passwordMatches || !user.isActive) {
-      throw this.invalidCredentials();
+      throw AuthError.invalidCredentials();
     }
 
     const claims = await this.authClaimsResolver.resolve(user);
     if (!claims) {
-      throw this.invalidCredentials();
+      throw AuthError.invalidCredentials();
     }
 
     const accessToken = await this.tokenService.sign(claims);
     return { accessToken, user: claims };
-  }
-
-  // Mensagem única pra todos os casos: não revela se foi o e-mail ou a senha.
-  private invalidCredentials(): UnauthorizedException {
-    return new UnauthorizedException('Credenciais inválidas.');
   }
 
   private getDummyHash(): Promise<string> {
