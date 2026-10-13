@@ -1,0 +1,5 @@
+[test]
+# Cobertura: meta de 80% nos domínios críticos (requisito do Tech Challenge).
+coverageThreshold = { lines = 0.8, functions = 0.8 }
+coverageSkipTestFiles = true
+coveragePathIgnorePatterns = ["src/generated/**", "test/**"]

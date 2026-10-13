@@ -12,9 +12,9 @@ if ! echo "$branch" | grep -qE '^(feat|fix|docs|chore|refactor|test|ci|build|per
   exit 1
 fi
 
-if [ -f package-lock.json ] || [ -f yarn.lock ]; then
-  echo "❌ Encontrado lockfile de outro gerenciador (package-lock.json ou yarn.lock). Este projeto usa pnpm — apague o arquivo e use 'pnpm install'."
+if [ -f package-lock.json ] || [ -f yarn.lock ] || [ -f pnpm-lock.yaml ]; then
+  echo "❌ Encontrado lockfile de outro gerenciador (package-lock.json, yarn.lock ou pnpm-lock.yaml). Este projeto usa Bun — apague o arquivo e use 'bun install'."
   exit 1
 fi
 
-pnpm exec lint-staged
+bunx lint-staged
