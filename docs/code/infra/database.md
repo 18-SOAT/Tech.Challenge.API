@@ -29,7 +29,7 @@ O Prisma conecta sozinho na primeira query, então não existe `$connect()` no s
 
 ```typescript
 // server.ts
-app.onStop(() => container.prisma.$disconnect());
+createApp({ ... }).onStop(() => shared.prisma.$disconnect()).listen(env.PORT);
 ```
 
 Fecha o pool de conexões quando o servidor para, sem deixar conexões penduradas no Postgres a cada restart.

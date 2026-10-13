@@ -1,4 +1,4 @@
-# mechanic-system
+# tech-challenge-api
 
 ## 1.0.0
 

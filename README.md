@@ -6,8 +6,6 @@ Back-end do **Tech Challenge FIAP** (SOAT): sistema integrado de atendimento e e
 
 Bun · Elysia · TypeScript · TypeBox · PostgreSQL + Prisma ORM · OpenAPI (Scalar) · JWT (`jose`) · Biome · Husky · Changesets · Docker/docker-compose
 
-> Em migração a partir da versão NestJS. Status em [`docs/migration/elysia.md`](docs/migration/elysia.md).
-
 ## Pré-requisitos
 
 - [Bun](https://bun.sh) (`curl -fsSL https://bun.sh/install | bash`)
@@ -50,7 +48,7 @@ bun run ci          # checagem usada no CI (não escreve nada)
 
 - [Arquitetura e padrões de código](docs/code/README.md)
 - [Workflow de git (branch, commit, PR, changesets)](docs/workflow/README.md)
-- [Plano de migração NestJS → Elysia](docs/migration/elysia.md)
+- [Decisões de arquitetura (ADRs)](docs/adr/)
 - [Contexto do projeto e escopo](CLAUDE.md)
 
 ## Licença

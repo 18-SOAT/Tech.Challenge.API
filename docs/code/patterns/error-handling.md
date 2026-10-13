@@ -81,7 +81,9 @@ export const errorHandler = new Elysia({ name: 'error-handler' }).onError(
       return fail(set, 500, 'Erro interno.');
     }
 
-    if (code === 'VALIDATION') return fail(set, 400, validationMessage(error));
+    // `instanceof` (e não `code === 'VALIDATION'`): dá o tipo de ValidationError, com o
+    // `customError` = o `error` declarado no campo do schema.
+    if (error instanceof ValidationError) return fail(set, 400, validationMessage(error));
     if (code === 'NOT_FOUND') return fail(set, 404, 'Rota não encontrada.');
     if (code === 'PARSE') return fail(set, 400, 'Corpo da requisição malformado.');
 
@@ -97,7 +99,7 @@ export const errorHandler = new Elysia({ name: 'error-handler' }).onError(
 |---|---|---|
 | `DomainError` com `code` no `STATUS_MAP` | o do mapa | `error.message` (já em português, vindo do catalog) |
 | `DomainError` **sem** entrada no mapa | 500 + log | genérica (`Erro interno.`) |
-| `VALIDATION` (schema TypeBox rejeitou) | 400 | o `error` customizado do campo no schema (ver [DTO](dto.md)), ou uma genérica |
+| `ValidationError` (schema TypeBox rejeitou) | 400 | o `error` customizado do campo no schema (`error.customError`, ver [DTO](dto.md)), ou `Dados de entrada inválidos.` |
 | `NOT_FOUND` (rota inexistente) | 404 | `Rota não encontrada.` |
 | `PARSE` (JSON malformado) | 400 | `Corpo da requisição malformado.` |
 | Qualquer outra coisa | 500 + log | genérica: **nunca** devolva stack ou mensagem interna |
@@ -114,8 +116,16 @@ No Elysia, um hook registrado num plugin vale, por padrão, **só para as rotas 
 // shared/presentation/http/envelope.ts
 import { status, t, type TSchema } from 'elysia';
 
-export const ok = <T, const S extends number = 200>(data: T, code: S = 200 as S) =>
-  status(code, { data, message: null, status: code });
+// Overloads: sem o código, o tipo fica no literal 200 (e não em `number`), senão o
+// Elysia não casa o retorno com a entrada `200` do `response`.
+export function ok<T>(data: T): ReturnType<typeof status<200, { data: T; message: null; status: 200 }>>;
+export function ok<T, const Code extends number>(
+  data: T,
+  code: Code,
+): ReturnType<typeof status<Code, { data: T; message: null; status: Code }>>;
+export function ok(data: unknown, code = 200): any {
+  return status(code, { data, message: null, status: code });
+}
 
 export const Envelope = <T extends TSchema>(data: T) =>
   t.Object({ data, message: t.Null(), status: t.Number() });

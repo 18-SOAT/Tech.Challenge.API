@@ -6,7 +6,7 @@ Stack: **Bun** (runtime + gerenciador de pacotes + test runner) + **Elysia** + T
 
 O projeto segue **DDD (Domain-Driven Design)** tático, com **Clean Architecture + Ports & Adapters** (monolito modular, camadas `domain/application/infrastructure/presentation` por módulo). O Elysia fica restrito à camada `presentation/` — domínio e aplicação não conhecem o framework.
 
-> Este repositório é a continuação do `mechanic-system` (NestJS), migrado para Bun + Elysia. O plano e o status da migração estão em [`docs/migration/elysia.md`](docs/migration/elysia.md).
+> Decisões de arquitetura registradas em [`docs/adr/`](docs/adr/) — ex: [ADR 0001](docs/adr/0001-stack-bun-elysia.md), a troca de NestJS para Bun + Elysia.
 
 ## Escopo funcional obrigatório
 
@@ -53,7 +53,9 @@ Sempre que for implementar algo, **explique o conceito antes de codar**:
 ## Testes
 
 - Regras de negócio de domínio (entidades, value objects, use cases) têm teste unitário com `bun test`, sem subir o Elysia — teste a classe isolada, com os fakes de `test/fakes/`.
-- Testes de rota ficam em `test/*.e2e.spec.ts`: montam a app com `createApp(depsFake)` e chamam `app.handle(new Request(...))` — sem servidor HTTP real, sem supertest, sem banco.
+- Testes de rota ficam em `test/*.e2e.spec.ts`: montam a app com `makeTestApp()` (`test/fakes/make-test-app.ts` — o `createApp` com fakes no lugar dos adapters) e chamam `app.handle(jsonRequest(...))` (`test/helpers/http.ts`) — sem servidor HTTP real, sem banco.
+- Todo módulo com rota protegida tem e2e chamando a rota **sem token** e esperando 401.
+- Cobertura: `bun run test:cov` exige 80% de linhas **por arquivo** (`bunfig.toml`); o CI roda `bun test --coverage`.
 - Imports de teste vêm de `bun:test` (`describe`, `it`, `expect`, `beforeEach`, `mock`).
 
 ## Fluxo de Changesets

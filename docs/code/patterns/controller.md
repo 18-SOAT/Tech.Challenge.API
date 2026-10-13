@@ -14,8 +14,8 @@ Nenhuma das duas tem lógica de negócio, e nenhuma fala com um Repository diret
 import { Elysia } from 'elysia';
 import { ApiError, Envelope, ok } from '../../../../../shared/presentation/http/envelope.js';
 import type { LoginUseCase } from '../../../application/use-cases/login.use-case.js';
-import { LoginRequestSchema, LoginResponseSchema } from '../../dtos/login.dto.js';
-import { LoginResponseDto } from '../../dtos/login.response.dto.js';
+import { LoginRequestSchema } from '../../dtos/login.dto.js';
+import { LoginResponseDto, LoginResponseSchema } from '../../dtos/login.response.dto.js';
 
 export const loginHandler = (login: LoginUseCase) =>
   new Elysia().post(
