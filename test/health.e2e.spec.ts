@@ -1,10 +1,9 @@
 import { describe, expect, it } from 'bun:test';
-import { createApp } from '../src/app.js';
-import { FakeTokenService } from './fakes/fake-token-service.js';
+import { makeTestApp } from './fakes/make-test-app.js';
 import { jsonRequest, readEnvelope } from './helpers/http.js';
 
 describe('GET /health (e2e)', () => {
-  const app = createApp({ tokenService: new FakeTokenService() });
+  const { app } = makeTestApp();
 
   it('responde 200 sem token, no envelope, com status e dateTime em ISO', async () => {
     const response = await app.handle(jsonRequest('/health'));

@@ -1,4 +1,5 @@
 import { createApp } from './app.js';
+import { makeAuthContainer } from './modules/auth/auth.container.js';
 import { readEnv } from './shared/infrastructure/config/env.js';
 import { makeSharedContainer } from './shared/shared.container.js';
 
@@ -6,7 +7,10 @@ import { makeSharedContainer } from './shared/shared.container.js';
 const env = readEnv();
 const shared = makeSharedContainer(env);
 
-const app = createApp({ tokenService: shared.tokenService })
+const app = createApp({
+  tokenService: shared.tokenService,
+  auth: makeAuthContainer(shared),
+})
   .onStop(() => shared.prisma.$disconnect())
   .listen(env.PORT);
 

@@ -1,7 +1,10 @@
+import { t } from 'elysia';
 import type { LoginOutput } from '../../application/use-cases/login.use-case.js';
-import { AuthenticatedUserResponseDto } from './authenticated-user.response.dto.js';
+import {
+  AuthenticatedUserResponseDto,
+  AuthenticatedUserSchema,
+} from './authenticated-user.response.dto.js';
 
-// TODO: swagger — @ApiProperty.
 export class LoginResponseDto {
   private constructor(
     readonly accessToken: string,
@@ -15,3 +18,13 @@ export class LoginResponseDto {
     );
   }
 }
+
+export const LoginResponseSchema = t.Object(
+  {
+    accessToken: t.String({
+      description: 'JWT para o header Authorization: Bearer',
+    }),
+    user: AuthenticatedUserSchema,
+  },
+  { title: 'LoginResponse' },
+);
