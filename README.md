@@ -8,25 +8,51 @@ Bun · Elysia · TypeScript · TypeBox · PostgreSQL + Prisma ORM · OpenAPI (Sc
 
 ## Pré-requisitos
 
-- [Bun](https://bun.sh) (`curl -fsSL https://bun.sh/install | bash`)
-- PostgreSQL (local ou via `docker-compose`, quando disponível)
+- [Docker](https://docs.docker.com/get-docker/) com Docker Compose v2 — para subir o ambiente completo
+- [Bun](https://bun.sh) 1.4.3 (`curl -fsSL https://bun.sh/install | bash`) — para desenvolver e rodar os testes fora do Docker
 
-## Instalação
+## Rodando com Docker (ambiente completo)
+
+```bash
+cp .env.example .env   # preencha JWT_SECRET (ex: openssl rand -base64 32)
+docker compose up --build
+```
+
+O compose sobe três serviços, nesta ordem:
+
+1. **postgres** (PostgreSQL 17), que só é considerado pronto quando o `pg_isready` responde;
+2. **migrate**, um job de execução única: aplica as migrations versionadas (`prisma migrate deploy`), roda o seed e encerra;
+3. **api**, que só sobe depois que o `migrate` terminou com sucesso.
+
+A API fica em `http://localhost:3000`, a documentação em `http://localhost:3000/openapi` e o `GET /health` checa também o banco (responde `503` se ele cair).
+
+```bash
+docker compose down      # para os containers (mantém os dados)
+docker compose down -v   # para e apaga o volume do banco
+```
+
+### Usuário de demonstração
+
+O seed cria um funcionário **ADMIN** (idempotente: rodar de novo não duplica):
+
+| E-mail | Senha |
+|---|---|
+| `admin@oficina.com` | `admin12345` |
+
+Altere com `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` no `.env`. Para autenticar: `POST /auth/login` com essas credenciais e use o `accessToken` como `Authorization: Bearer <token>`.
+
+## Rodando localmente (sem Docker para a API)
 
 ```bash
 bun install
-cp .env.example .env   # preencha DATABASE_URL e JWT_SECRET
-bun run prisma:migrate
+cp .env.example .env            # preencha JWT_SECRET
+docker compose up -d postgres   # ou um Postgres local apontado pelo DATABASE_URL
+bun run prisma:deploy           # aplica as migrations
+bun run db:seed                 # cria o ADMIN de demonstração
+bun run dev                     # watch mode (bun run start = sem watch)
 ```
 
-## Rodando
-
-```bash
-bun run dev     # watch mode
-bun run start   # sem watch
-```
-
-A documentação da API fica em `http://localhost:3000/openapi`.
+Para mudar o schema: edite `prisma/schema.prisma` e rode `bun run prisma:migrate --name <descricao>`, que gera a nova migration em `prisma/migrations/` (versionada no git).
 
 ## Testes
 
