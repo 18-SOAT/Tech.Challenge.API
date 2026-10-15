@@ -31,7 +31,9 @@ jobs:
         run: bun test --coverage
 
   changeset-check:
-    if: github.event_name == 'pull_request'
+    # O PR de release do changesets (changeset-release/*) consome os changesets por
+    # definição — checar lá falharia sempre. Job pulado conta como aprovado no GitHub.
+    if: github.event_name == 'pull_request' && !startsWith(github.head_ref, 'changeset-release/')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
