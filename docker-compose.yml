@@ -1,0 +1,74 @@
+# Ambiente completo: `docker compose up --build`.
+# Ordem de subida: postgres (healthy) → migrate (migrations + seed, encerra) → api.
+# Variáveis vêm do .env (o compose lê sozinho para interpolar ${...}); ver .env.example.
+
+name: tech-challenge
+
+# Dentro da rede do compose o host do banco é o nome do serviço (`postgres`), não localhost.
+x-database-url: &database-url postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-mechanic_system}
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-mechanic_system}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    # "Container iniciou" ≠ "banco aceita conexão": o pg_isready é o que o
+    # depends_on: service_healthy do migrate espera.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Job de execução única (como um Job/initContainer no Kubernetes): migração é uma
+  # tarefa, não parte do processo da API — e a imagem da API fica sem o CLI do Prisma.
+  migrate:
+    build:
+      context: .
+      target: migrate
+    environment:
+      DATABASE_URL: *database-url
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
+      SEED_ADMIN_NAME: ${SEED_ADMIN_NAME:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      target: runtime
+    environment:
+      DATABASE_URL: *database-url
+      JWT_SECRET: ${JWT_SECRET:?Defina JWT_SECRET no .env (ver .env.example)}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-1h}
+      PORT: 3000
+    ports:
+      - "${PORT:-3000}:3000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    # A imagem slim não tem curl: o próprio Bun faz a requisição. O /health responde
+    # 503 quando o banco cai, então o container fica unhealthy junto.
+    healthcheck:
+      test:
+        - CMD
+        - bun
+        - -e
+        - "fetch('http://localhost:3000/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
