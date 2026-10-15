@@ -1,6 +1,8 @@
 import type { PasswordHasher } from '../modules/user/domain/ports/password-hasher.port.js';
 import { BcryptPasswordHasher } from '../modules/user/infrastructure/hashing/bcrypt-password-hasher.js';
 import type { Env } from './infrastructure/config/env.js';
+import type { DatabaseHealthCheck } from './infrastructure/health/database-health.port.js';
+import { PrismaDatabaseHealthCheck } from './infrastructure/health/prisma-database-health.js';
 import { JoseTokenService } from './infrastructure/jwt/jose-token.service.js';
 import type { TokenService } from './infrastructure/jwt/token-service.port.js';
 import { createPrismaClient } from './infrastructure/prisma/client.js';
@@ -13,11 +15,16 @@ export function makeSharedContainer(env: Env) {
     expiresIn: env.JWT_EXPIRES_IN,
   });
   const passwordHasher: PasswordHasher = new BcryptPasswordHasher();
+  const prisma = createPrismaClient(env.DATABASE_URL);
+  const databaseHealth: DatabaseHealthCheck = new PrismaDatabaseHealthCheck(
+    prisma,
+  );
 
   return {
-    prisma: createPrismaClient(env.DATABASE_URL),
+    prisma,
     tokenService,
     passwordHasher,
+    databaseHealth,
   };
 }
 
