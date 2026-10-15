@@ -1,0 +1,21 @@
+# Tudo que não precisa entrar no contexto de build: deixa o build mais rápido e
+# garante que segredos (.env) e artefatos locais nunca vão parar numa imagem.
+.git
+.github
+.husky
+.changeset
+.vscode
+.idea
+node_modules
+coverage
+dist
+docs
+test
+src/generated
+.env
+.env.*
+*.log
+*.md
+Dockerfile
+docker-compose.yml
+.dockerignore

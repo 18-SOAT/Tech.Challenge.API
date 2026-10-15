@@ -9,6 +9,7 @@ const shared = makeSharedContainer(env);
 
 const app = createApp({
   tokenService: shared.tokenService,
+  databaseHealth: shared.databaseHealth,
   auth: makeAuthContainer(shared),
 })
   .onStop(() => shared.prisma.$disconnect())

@@ -3,6 +3,7 @@ import { AuthClaimsResolver } from '../../src/modules/auth/application/services/
 import { GetMeUseCase } from '../../src/modules/auth/application/use-cases/get-me.use-case.js';
 import { LoginUseCase } from '../../src/modules/auth/application/use-cases/login.use-case.js';
 import { RegisterCustomerUseCase } from '../../src/modules/auth/application/use-cases/register-customer.use-case.js';
+import { FakeDatabaseHealthCheck } from './fake-database-health.js';
 import { FakePasswordHasher } from './fake-password-hasher.js';
 import { FakeTokenService } from './fake-token-service.js';
 import { InMemoryCustomerRepository } from './in-memory-customer.repository.js';
@@ -19,9 +20,11 @@ export function makeTestApp() {
   const hasher = new FakePasswordHasher();
   const tokens = new FakeTokenService();
   const claims = new AuthClaimsResolver(customers, employees);
+  const database = new FakeDatabaseHealthCheck();
 
   const app = createApp({
     tokenService: tokens,
+    databaseHealth: database,
     auth: {
       registerCustomer: new RegisterCustomerUseCase(
         users,
@@ -34,5 +37,5 @@ export function makeTestApp() {
     },
   });
 
-  return { app, users, customers, employees, tokens };
+  return { app, users, customers, employees, tokens, database };
 }

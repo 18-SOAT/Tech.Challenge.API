@@ -12,10 +12,10 @@
     "dev": "bun --watch src/server.ts",
     "start": "bun src/server.ts",
     "typecheck": "tsc --noEmit",
-    "format": "biome format --write src/ test/",
-    "lint": "biome lint src/ test/",
-    "check": "biome check --write src/ test/",
-    "ci": "biome ci src/ test/",
+    "format": "biome format --write src/ test/ prisma/",
+    "lint": "biome lint src/ test/ prisma/",
+    "check": "biome check --write src/ test/ prisma/",
+    "ci": "biome ci src/ test/ prisma/",
     "test": "bun test",
     "test:watch": "bun test --watch",
     "test:cov": "bun test --coverage",
@@ -24,6 +24,8 @@
     "version": "changeset version",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
+    "prisma:deploy": "prisma migrate deploy",
+    "db:seed": "prisma db seed",
     "prisma:validate": "prisma validate"
   },
   "lint-staged": {

@@ -54,7 +54,11 @@ Sempre que for implementar algo, **explique o conceito antes de codar**:
 - `bun run changeset` — cria um novo arquivo de changeset
 - `bun run changeset:status` — mostra se há changeset pendente comparado ao `main` (o que o CI roda em PRs)
 - `bun run version` — aplica os changesets pendentes: bump de versão + `CHANGELOG.md`
-- `bun run prisma:generate` / `prisma:migrate` / `prisma:validate`
+- `bun run prisma:generate` / `prisma:validate`
+- `bun run prisma:migrate --name <descricao>` — `prisma migrate dev`: gera uma nova migration em `prisma/migrations/` a partir do schema (só em desenvolvimento)
+- `bun run prisma:deploy` — `prisma migrate deploy`: só aplica as migrations versionadas (o que o container `migrate` roda)
+- `bun run db:seed` — cria o ADMIN de demonstração (idempotente; `prisma/seed.ts`)
+- `docker compose up --build` — ambiente completo: postgres → migrate (migrations + seed) → api
 
 > Use sempre `bun run <script>` para scripts do `package.json`. `bun test` (sem `run`) é o test runner nativo; `bun run ci` (com `run`) é necessário porque `bun ci` é outro comando do próprio Bun.
 

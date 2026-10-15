@@ -3,6 +3,7 @@ import { Elysia } from 'elysia';
 import pkg from '../package.json' with { type: 'json' };
 import type { AuthUseCases } from './modules/auth/auth.container.js';
 import { authRoutes } from './modules/auth/presentation/index.js';
+import type { DatabaseHealthCheck } from './shared/infrastructure/health/database-health.port.js';
 import type { TokenService } from './shared/infrastructure/jwt/token-service.port.js';
 import { authPlugin } from './shared/presentation/auth/auth.plugin.js';
 import { healthHandler } from './shared/presentation/health/health.handler.js';
@@ -11,6 +12,7 @@ import './shared/presentation/http/formats.js';
 
 export interface AppDeps {
   tokenService: TokenService;
+  databaseHealth: DatabaseHealthCheck;
   auth: AuthUseCases;
 }
 
@@ -32,7 +34,10 @@ export function createApp(deps: AppDeps) {
               'Sistema integrado de atendimento e execução de serviços. Toda resposta segue o envelope { data, message, status }.',
           },
           tags: [
-            { name: 'Health', description: 'Disponibilidade da API' },
+            {
+              name: 'Health',
+              description: 'Disponibilidade da API e do banco',
+            },
             {
               name: 'Auth',
               description: 'Cadastro de cliente, login e usuário autenticado',
@@ -51,7 +56,7 @@ export function createApp(deps: AppDeps) {
       }),
     )
     .use(auth)
-    .use(healthHandler())
+    .use(healthHandler(deps.databaseHealth))
     .use(authRoutes(deps.auth, auth));
 }
 
