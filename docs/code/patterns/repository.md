@@ -53,9 +53,89 @@ export interface Repository<T, ID = string> {
 
 Coloque na interface base só operações realmente universais. Não force um `delete()` em todo repository se nem todo aggregate pode ser deletado. Cada `XxxRepository` específico estende a base e adiciona só as queries que seu aggregate precisa (Interface Segregation Principle).
 
-## Port nomeado pela operação
+## Transações: port nomeado pela operação
 
-Quando uma operação precisa ser atômica entre aggregates, o port é nomeado pela **operação de negócio**, não por tabela. Exemplo: `CustomerRegistrationRepository.register(user, customer)` cria User + Customer numa transação, ou os dois existem ou nenhum.
+Quando uma operação precisa ser atômica entre aggregates, o port é nomeado pela **operação de negócio**, não por tabela, e o adapter abre a transação por dentro. Exemplo: `CustomerRegistrationRepository.register(user, customer)` cria User + Customer numa transação, ou os dois existem ou nenhum.
+
+### Por que não Unit of Work
+
+| | Repository por operação (adotado) | Unit of Work |
+|---|---|---|
+| Fronteira da transação | Dentro do adapter Prisma | No use case, que abre/fecha a transação |
+| Use case | Não sabe que existe transação | Orquestra a transação |
+| Repositories | Inalterados | Todos precisam aceitar o client da transação (`tx`) |
+| Custo | Um port a mais por fluxo atômico | Infra de UoW + o tipo `tx` do Prisma tende a vazar para a application |
+
+Os fluxos atômicos do projeto são poucos (cadastro, aprovação de orçamento, movimentação de estoque), então um port por fluxo sai mais barato e mantém domain e application sem Prisma. Se o número de fluxos crescer a ponto de os ports se multiplicarem, a troca para Unit of Work deve ser registrada em ADR.
+
+### Regras
+
+- **Regra de negócio na Entity, não no adapter.** O use case carrega os aggregates, chama os métodos da Entity (que validam e mudam o estado) e entrega o resultado ao port. O adapter só persiste tudo numa transação.
+- **Invariante que depende do estado atual do banco** (estoque suficiente, status ainda válido) é garantida no adapter com **update condicional**: um `updateMany` com a condição no `where`. Se `count === 0`, o adapter lança o `DomainError` correspondente, e a exceção desfaz a transação inteira. Isso fecha a corrida entre duas requisições simultâneas sem subir o isolamento para `SERIALIZABLE`.
+- **Erro do Prisma não sai da infrastructure**: `P2002` e afins viram `DomainError` (ver [Erros de unicidade do banco](#erros-de-unicidade-do-banco)).
+- **O fake in-memory também é atômico**: valida tudo antes de mutar qualquer coleção, para que o teste unitário do use case enxergue o mesmo comportamento de "tudo ou nada".
+
+### Lote ou interativa
+
+| Forma | Quando usar | Exemplo |
+|---|---|---|
+| `$transaction([op1, op2])` (lote) | Escritas independentes, nenhuma depende do resultado da outra | `register(user, customer)` |
+| `$transaction(async (tx) => { ... })` (interativa) | Um passo depende do resultado de outro, ou há update condicional que pode abortar | Aprovação de orçamento, baixa de estoque |
+
+Na forma interativa, todas as queries usam o `tx` recebido, nunca `this.prisma`: uma query feita com `this.prisma` roda fora da transação e não é desfeita no rollback.
+
+### Exemplo de referência: aprovação de orçamento
+
+Aprovar congela o valor, muda o status, grava o histórico e baixa o estoque, tudo atômico.
+
+```typescript
+// modules/service-order/domain/ports/service-order-approval.repository.ts
+export interface ServiceOrderApprovalRepository {
+  approve(serviceOrder: ServiceOrder, movements: StockMovement[]): Promise<void>;
+}
+```
+
+```typescript
+// modules/service-order/application/use-cases/approve-quote.use-case.ts
+async execute(input: ApproveQuoteInput): Promise<void> {
+  const serviceOrder = await this.serviceOrders.findById(input.serviceOrderId);
+  if (!serviceOrder) throw ServiceOrderError.notFound();
+
+  serviceOrder.approve(); // a Entity valida o status e congela o valor
+  await this.approvalRepository.approve(serviceOrder, serviceOrder.stockOutMovements());
+}
+```
+
+```typescript
+// modules/service-order/infrastructure/persistence/prisma-service-order-approval.repository.ts
+async approve(serviceOrder: ServiceOrder, movements: StockMovement[]): Promise<void> {
+  await this.prisma.$transaction(async (tx) => {
+    // Update condicional: se outra requisição já aprovou/rejeitou, nada é atualizado.
+    const { count } = await tx.serviceOrder.updateMany({
+      where: { id: serviceOrder.idValue, status: 'AWAITING_APPROVAL' },
+      data: ServiceOrderMapper.toApprovalObject(serviceOrder),
+    });
+    if (count === 0) throw ServiceOrderError.notAwaitingApproval();
+
+    await tx.serviceOrderStatusHistory.create({
+      data: ServiceOrderMapper.toHistoryObject(serviceOrder),
+    });
+
+    for (const movement of movements) {
+      // Só baixa se houver saldo; senão aborta e desfaz tudo acima.
+      const { count } = await tx.product.updateMany({
+        where: { id: movement.productId, stockQuantity: { gte: movement.quantity } },
+        data: { stockQuantity: { decrement: movement.quantity } },
+      });
+      if (count === 0) throw InventoryError.insufficientStock();
+
+      await tx.stockMovement.create({ data: StockMovementMapper.toObject(movement) });
+    }
+  });
+}
+```
+
+A rejeição segue o mesmo formato, sem a parte de estoque (status + histórico).
 
 ## Mapper: `toEntity` / `toObject`
 
