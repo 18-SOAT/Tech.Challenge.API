@@ -1,5 +1,5 @@
 // =============================================================
-// mechanic-system — persistence schema
+// Tech.Challenge.API — persistence schema
 //
 // - IDs: UUID v7 generated in the domain (IdGenerator) → no @default.
 // - Money: Decimal(10,2), never Float.
@@ -168,7 +168,8 @@ model StockMovement {
 }
 
 // -------------------------------------------------------------
-// Order (vehicle stay, aggregate root) → Service Orders → Items
+// Order (vehicle stay) and ServiceOrder (quote → execution, with items and history)
+// are separate aggregates: ServiceOrder references Order by ID only.
 // -------------------------------------------------------------
 
 enum OrderStatus {
