@@ -91,7 +91,6 @@ src/
 
 - [Padrão de services (Port & Adapter)](infra/services-pattern.md)
 - [Email](infra/email.md)
-- [Cache](infra/cache.md)
 - [Database (Prisma)](infra/database.md)
 
 ## Bibliotecas
@@ -100,4 +99,4 @@ src/
 
 ## Relacionado
 
-O fluxo de git (branch, commits, PRs, changesets) está em [`../workflow/README.md`](../workflow/README.md). O diagrama do banco está em [`../diagrams/database.drawio`](../diagrams/database.drawio). Decisões de arquitetura (ADRs) estão em [`../adr/`](../adr/).
+O fluxo de git (branch, commits, PRs, changesets) está em [`../workflow/README.md`](../workflow/README.md). O diagrama do banco está em [`../diagrams/database.drawio`](../diagrams/database.drawio). A modelagem DDD (linguagem ubíqua, Domain Storytelling, Event Storming, context map e agregados) está em [`../ddd/`](../ddd/README.md). É de lá que vêm os nomes de classes e métodos do domínio. Decisões de arquitetura (ADRs) estão em [`../adr/`](../adr/).
