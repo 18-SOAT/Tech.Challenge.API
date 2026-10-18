@@ -1,6 +1,6 @@
 # Email
 
-> Ainda não implementado. Este doc define o formato para quando entrar (ex: notificar o cliente sobre mudança de status da OS ou orçamento para aprovar).
+> Usado em dois fluxos do domínio (ver [linguagem ubíqua](../../ddd/linguagem-ubiqua.md#acesso-do-cliente-e-da-equipe)): o **link de acesso** (primeiro acesso, redefinição de senha e funcionário recém-cadastrado) e o **envio do orçamento** ao cliente. Na demo, o docker-compose sobe um Mailpit para capturar os e-mails.
 
 ## Port genérica
 

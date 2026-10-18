@@ -72,10 +72,11 @@ bun run ci          # checagem usada no CI (não escreve nada)
 
 ## Documentação
 
+- [Documentação DDD](docs/ddd/README.md): Domain Storytelling, Event Storming, subdomínios, context map, agregados e [linguagem ubíqua](docs/ddd/linguagem-ubiqua.md)
+- [Modelo de dados](docs/diagrams/database.svg) (fonte: [database.drawio](docs/diagrams/database.drawio))
 - [Arquitetura e padrões de código](docs/code/README.md)
 - [Workflow de git (branch, commit, PR, changesets)](docs/workflow/README.md)
 - [Decisões de arquitetura (ADRs)](docs/adr/)
-- [Contexto do projeto e escopo](CLAUDE.md)
 
 ## Licença
 

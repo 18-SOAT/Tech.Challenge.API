@@ -9,7 +9,7 @@ export class Customer {
   private constructor(
     private readonly id: string,
     private name: string,
-    private readonly document: CpfCnpj,
+    private readonly document: Document,
     private email: string,
   ) {}
 
@@ -17,14 +17,14 @@ export class Customer {
     return new Customer(
       IdGenerator.generate(),
       input.name,
-      CpfCnpj.create(input.document), // valida aqui, lança um erro de domínio se inválido
+      Document.create(input.document), // valida aqui, lança um erro de domínio se inválido
       input.email,
     );
   }
 
   static restore(props: { id: string; name: string; document: string; email: string }): Customer {
     // usado só pelo Mapper, pra reconstruir a partir de dados já persistidos (já válidos)
-    return new Customer(props.id, props.name, CpfCnpj.create(props.document), props.email);
+    return new Customer(props.id, props.name, Document.create(props.document), props.email);
   }
 }
 ```
@@ -52,7 +52,7 @@ Quando a validação falha, o VO lança o `DomainError` do catalog do módulo (e
 
 ```typescript
 export class ServiceOrder {
-  approveQuote(): void {
+  approve(): void {
     if (this.status !== ServiceOrderStatus.AWAITING_APPROVAL) {
       throw ServiceOrderError.invalidStatusTransition(this.status);
     }
@@ -61,7 +61,7 @@ export class ServiceOrder {
 }
 ```
 
-O Use Case só chama `serviceOrder.approveQuote()` — ele nunca embute a checagem de transição de status.
+O Use Case só chama `serviceOrder.approve()` — ele nunca embute a checagem de transição de status.
 
 ## Campos sensíveis: sem getter público do valor bruto
 
