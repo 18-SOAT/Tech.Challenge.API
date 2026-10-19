@@ -119,7 +119,7 @@ Com um status só, um reparo adicional obrigaria a voltar uma OS "Em execução"
 | `User` | — | `Email`, `Password` | E-mail único; usuário inativo não autentica; o link de acesso vale uma vez. |
 | `Customer` | — | `Document`, `Email`, `Phone` | Documento válido, único e imutável; e-mail obrigatório (canal de contato e do primeiro acesso), pode repetir entre clientes e funcionários (único é o e-mail de login, no `User`); não é excluído se tiver login, veículos ou OS. |
 | `Employee` | — | — | Papel `ADMIN` ou `MECHANIC`, alterado só por ADMIN; sempre resta ao menos um ADMIN. |
-| `Vehicle` | — | `LicensePlate` | Placa válida e única; pertence a um cliente (por ID). |
+| `Vehicle` | — | `LicensePlate` | Placa válida e única (pode ser corrigida ou convertida para Mercosul); pertence a um cliente (por ID), que não muda; ano entre 1900 e o ano seguinte ao atual; não é excluído se tiver OS. |
 | `Service` | — | `Money` | Preço ≥ 0; inativo não entra em orçamento novo. |
 | `Product` | `StockMovement` | `Money` | Saldo nunca negativo; todo saldo muda por movimentação. |
 | `Order` | — | — | Entrega só com todas as OS terminais (regra validada em `Order.deliver(...)` com os status recebidos do use case). |
@@ -166,6 +166,8 @@ Os eventos **não viram classes**. No MVP, nenhum consumidor reage a eles de for
 | `Dados do cliente alterados` | `Customer.update()` | `customers` (nome, e-mail, telefone) |
 | `Cliente excluído` | `Customer.assertCanBeRemoved()` + `CustomerRepository.delete()` | linha removida de `customers` |
 | `Veículo cadastrado` | `Vehicle.create()` | linha em `vehicles` |
+| `Dados do veículo alterados` | `Vehicle.update()` | `vehicles` (placa, marca, modelo, ano) |
+| `Veículo excluído` | `VehicleRepository.delete()` | linha removida de `vehicles` |
 | `Ordem aberta` | `Order.open()` | `orders` em `RECEIVED` |
 | `OS criada` | `ServiceOrder.create()` | `service_orders` + histórico `IN_DIAGNOSIS` |
 | `Mecânico atribuído` | `ServiceOrder.assign(mechanicId)` | `service_orders.assignee_id` |
