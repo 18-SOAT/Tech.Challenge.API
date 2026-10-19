@@ -2,6 +2,7 @@ import { Elysia, ValidationError } from 'elysia';
 import { AuthErrorCode } from '../../../modules/auth/domain/errors/auth.error.js';
 import { CustomerErrorCode } from '../../../modules/customer/domain/errors/customer.error.js';
 import { UserErrorCode } from '../../../modules/user/domain/errors/user.error.js';
+import { VehicleErrorCode } from '../../../modules/vehicle/domain/errors/vehicle.error.js';
 import { DomainError } from '../../domain/errors/domain.error.js';
 import { SharedErrorCode } from '../../domain/errors/shared.error.js';
 import type { ApiErrorBody } from './envelope.js';
@@ -24,6 +25,13 @@ export const STATUS_MAP: Record<string, number> = {
   [CustomerErrorCode.NOT_FOUND]: 404,
   [CustomerErrorCode.HAS_LINKED_ACCESS]: 409,
   [CustomerErrorCode.HAS_DEPENDENCIES]: 409,
+  [VehicleErrorCode.INVALID_LICENSE_PLATE]: 400,
+  [VehicleErrorCode.INVALID_BRAND]: 400,
+  [VehicleErrorCode.INVALID_MODEL]: 400,
+  [VehicleErrorCode.INVALID_YEAR]: 400,
+  [VehicleErrorCode.LICENSE_PLATE_ALREADY_IN_USE]: 409,
+  [VehicleErrorCode.NOT_FOUND]: 404,
+  [VehicleErrorCode.HAS_SERVICE_ORDERS]: 409,
   [SharedErrorCode.INVALID_EMAIL]: 400,
 };
 
