@@ -5,6 +5,8 @@ import type { AuthUseCases } from './modules/auth/auth.container.js';
 import { authRoutes } from './modules/auth/presentation/index.js';
 import type { CustomerUseCases } from './modules/customer/customer.container.js';
 import { customerRoutes } from './modules/customer/presentation/index.js';
+import type { InventoryUseCases } from './modules/inventory/inventory.container.js';
+import { serviceRoutes } from './modules/inventory/presentation/index.js';
 import { vehicleRoutes } from './modules/vehicle/presentation/index.js';
 import type { VehicleUseCases } from './modules/vehicle/vehicle.container.js';
 import type { DatabaseHealthCheck } from './shared/infrastructure/health/database-health.port.js';
@@ -20,6 +22,7 @@ export interface AppDeps {
   auth: AuthUseCases;
   customers: CustomerUseCases;
   vehicles: VehicleUseCases;
+  inventory: InventoryUseCases;
 }
 
 // Monta a aplicação sem subir servidor: o server.ts passa os containers reais e o
@@ -57,6 +60,11 @@ export function createApp(deps: AppDeps) {
               description:
                 'Veículos dos clientes, com validação de placa (ADMIN)',
             },
+            {
+              name: 'Services',
+              description:
+                'Catálogo de serviços: escrita pelo ADMIN, consulta também pelo MECHANIC',
+            },
           ],
           components: {
             securitySchemes: {
@@ -74,7 +82,8 @@ export function createApp(deps: AppDeps) {
     .use(healthHandler(deps.databaseHealth))
     .use(authRoutes(deps.auth, auth))
     .use(customerRoutes(deps.customers, auth))
-    .use(vehicleRoutes(deps.vehicles, auth));
+    .use(vehicleRoutes(deps.vehicles, auth))
+    .use(serviceRoutes(deps.inventory, auth));
 }
 
 export type App = ReturnType<typeof createApp>;

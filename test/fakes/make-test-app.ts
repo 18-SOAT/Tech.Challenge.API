@@ -8,6 +8,11 @@ import { DeleteCustomerUseCase } from '../../src/modules/customer/application/us
 import { FindCustomerByIdUseCase } from '../../src/modules/customer/application/use-cases/find-customer-by-id.use-case.js';
 import { ListCustomersUseCase } from '../../src/modules/customer/application/use-cases/list-customers.use-case.js';
 import { UpdateCustomerUseCase } from '../../src/modules/customer/application/use-cases/update-customer.use-case.js';
+import { CreateServiceUseCase } from '../../src/modules/inventory/application/use-cases/create-service.use-case.js';
+import { DeleteServiceUseCase } from '../../src/modules/inventory/application/use-cases/delete-service.use-case.js';
+import { FindServiceByIdUseCase } from '../../src/modules/inventory/application/use-cases/find-service-by-id.use-case.js';
+import { ListServicesUseCase } from '../../src/modules/inventory/application/use-cases/list-services.use-case.js';
+import { UpdateServiceUseCase } from '../../src/modules/inventory/application/use-cases/update-service.use-case.js';
 import { CreateVehicleUseCase } from '../../src/modules/vehicle/application/use-cases/create-vehicle.use-case.js';
 import { DeleteVehicleUseCase } from '../../src/modules/vehicle/application/use-cases/delete-vehicle.use-case.js';
 import { FindVehicleByIdUseCase } from '../../src/modules/vehicle/application/use-cases/find-vehicle-by-id.use-case.js';
@@ -19,6 +24,7 @@ import { FakeTokenService } from './fake-token-service.js';
 import { InMemoryCustomerRepository } from './in-memory-customer.repository.js';
 import { InMemoryCustomerRegistrationRepository } from './in-memory-customer-registration.repository.js';
 import { InMemoryEmployeeRepository } from './in-memory-employee.repository.js';
+import { InMemoryServiceRepository } from './in-memory-service.repository.js';
 import { InMemoryUserRepository } from './in-memory-user.repository.js';
 import { InMemoryVehicleRepository } from './in-memory-vehicle.repository.js';
 
@@ -29,6 +35,7 @@ export function makeTestApp() {
   const customers = new InMemoryCustomerRepository();
   const employees = new InMemoryEmployeeRepository();
   const vehicles = new InMemoryVehicleRepository();
+  const services = new InMemoryServiceRepository();
   const hasher = new FakePasswordHasher();
   const tokens = new FakeTokenService();
   const claims = new AuthClaimsResolver(customers, employees);
@@ -61,7 +68,23 @@ export function makeTestApp() {
       updateVehicle: new UpdateVehicleUseCase(vehicles),
       deleteVehicle: new DeleteVehicleUseCase(vehicles),
     },
+    inventory: {
+      createService: new CreateServiceUseCase(services),
+      listServices: new ListServicesUseCase(services),
+      findServiceById: new FindServiceByIdUseCase(services),
+      updateService: new UpdateServiceUseCase(services),
+      deleteService: new DeleteServiceUseCase(services),
+    },
   });
 
-  return { app, users, customers, employees, vehicles, tokens, database };
+  return {
+    app,
+    users,
+    customers,
+    employees,
+    vehicles,
+    services,
+    tokens,
+    database,
+  };
 }
