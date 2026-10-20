@@ -1,5 +1,16 @@
 # tech-challenge-api
 
+## 2.1.0
+
+### Minor Changes
+
+- fdfc615: CRUD de clientes (`/customers`, só ADMIN): cadastro no balcão, listagem paginada com o método HTTP `QUERY`, detalhe, alteração e exclusão bloqueada quando o cliente tem login, veículos ou ordens de serviço.
+- 75549d6: CRUD de veículos (`/vehicles`, só ADMIN) com validação de placa no padrão antigo (ABC1234) e Mercosul (ABC1D23): cadastro vinculado ao cliente, listagem paginada via `QUERY` (por cliente e/ou placa), detalhe, alteração (inclusive conversão da placa para Mercosul) e exclusão bloqueada quando há ordens de serviço.
+
+### Patch Changes
+
+- 9f25989: Rotas protegidas passam a autenticar antes de validar o corpo: sem token responde 401 (e papel errado 403) mesmo com body inválido, em vez de 400.
+
 ## 2.0.0
 
 ### Major Changes
