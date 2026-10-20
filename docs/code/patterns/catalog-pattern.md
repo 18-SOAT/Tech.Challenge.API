@@ -7,7 +7,7 @@ Um formato recorrente nessa base de código: **uma classe por módulo agindo com
 | Preocupação | Classe catalog | Exemplo de variante |
 |---|---|---|
 | Erros de domínio | `CustomerError` | `.notFound()`, `.documentAlreadyInUse()` — ver [Tratamento de erros](error-handling.md) |
-| Email | `ServiceOrderMailer`, `AuthMailer` | `.sendQuote()`, `.sendAccessLink()` — ver [infra/email.md](../infra/email.md) |
+| Email | `ServiceOrderMailer`, `AuthMailer` | `.sendQuote()`, `.sendFirstAccessLink()`, `.sendPasswordResetLink()` — ver [infra/email.md](../infra/email.md) |
 
 ## Por que não um método de dispatch genérico
 
