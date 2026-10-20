@@ -41,6 +41,13 @@ const adminOnlyHandler = (auth: AuthPlugin) =>
     auth: { roles: [EmployeeRole.ADMIN] },
   });
 
+// Rota protegida COM body: autenticação precisa vir antes da validação.
+const adminCreateHandler = (auth: AuthPlugin) =>
+  new Elysia().use(auth).post('/admin', ({ body }) => ok(body, 201), {
+    auth: { roles: [EmployeeRole.ADMIN] },
+    body: t.Object({ name: t.String({ minLength: 1 }) }),
+  });
+
 function makeApp() {
   const tokens = new CountingTokenService();
   const auth = authPlugin(tokens);
@@ -59,7 +66,10 @@ function makeApp() {
         ),
       })
       .guard({ auth: true }, (guarded) =>
-        guarded.use(whoAmIHandler(auth)).use(adminOnlyHandler(auth)),
+        guarded
+          .use(whoAmIHandler(auth))
+          .use(adminOnlyHandler(auth))
+          .use(adminCreateHandler(auth)),
       ),
   );
   return { app, tokens };
@@ -161,5 +171,47 @@ describe('base HTTP (e2e): errorHandler, envelope, formats e macro auth', () => 
       role: EmployeeRole.ADMIN,
     });
     expect((await app.handle(get('/mod/admin', admin))).status).toBe(200);
+  });
+
+  it('autentica antes de validar: sem token + body inválido → 401, não 400', async () => {
+    const { app, tokens } = makeApp();
+
+    const response = await app.handle(
+      jsonRequest('/mod/admin', { body: { invalido: true } }),
+    );
+
+    expect(response.status).toBe(401);
+    expect(tokens.verifyCalls).toBe(0);
+  });
+
+  it('autoriza antes de validar: papel errado + body inválido → 403', async () => {
+    const { app, tokens } = makeApp();
+
+    const response = await app.handle(
+      jsonRequest('/mod/admin', {
+        body: { invalido: true },
+        token: await tokens.sign(customer),
+      }),
+    );
+
+    expect(response.status).toBe(403);
+  });
+
+  it('autorizado + body inválido → 400, verificando o token uma vez', async () => {
+    const { app, tokens } = makeApp();
+    const admin = await tokens.sign({
+      sub: 'user-2',
+      email: 'maria@oficina.com',
+      type: UserType.EMPLOYEE,
+      employeeId: 'employee-1',
+      role: EmployeeRole.ADMIN,
+    });
+
+    const response = await app.handle(
+      jsonRequest('/mod/admin', { body: { name: '' }, token: admin }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(tokens.verifyCalls).toBe(1);
   });
 });

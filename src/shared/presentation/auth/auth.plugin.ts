@@ -38,21 +38,34 @@ export const authPlugin = (tokenService: TokenService) => {
     return pending;
   };
 
+  const authorize = async (
+    options: AuthOptions,
+    request: Request,
+    authorization?: string,
+  ) => {
+    const user = await verifyOnce(request, authorization);
+    if (
+      options !== true &&
+      !(user.type === UserType.EMPLOYEE && options.roles.includes(user.role))
+    ) {
+      throw AuthError.forbidden();
+    }
+    return user;
+  };
+
+  // Ciclo do Elysia: parse → transform → validação → resolve → handler.
+  // `transform` barra quem não pode (401/403) ANTES de validar o body: sem token
+  // não se recebe 400 nem se gasta validação. `resolve` só injeta o `user` tipado,
+  // reaproveitando a verificação memoizada.
   return new Elysia({ name: 'auth' }).macro({
     auth: (options: AuthOptions) => ({
+      async transform({ headers, request }) {
+        await authorize(options, request, headers.authorization);
+      },
       async resolve({ headers, request }) {
-        const user = await verifyOnce(request, headers.authorization);
-
-        if (
-          options !== true &&
-          !(
-            user.type === UserType.EMPLOYEE && options.roles.includes(user.role)
-          )
-        ) {
-          throw AuthError.forbidden();
-        }
-
-        return { user };
+        return {
+          user: await authorize(options, request, headers.authorization),
+        };
       },
     }),
   });

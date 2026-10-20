@@ -4,6 +4,7 @@ import {
   Envelope,
   ok,
 } from '../../../../../shared/presentation/http/envelope.js';
+import { pageResponse } from '../../../../../shared/presentation/http/pagination.js';
 import type { ListCustomersUseCase } from '../../../application/use-cases/list-customers.use-case.js';
 import { CustomerResponseDto } from '../../dtos/customer.response.dto.js';
 import {
@@ -17,15 +18,14 @@ export const listCustomersHandler = (listCustomers: ListCustomersUseCase) =>
   new Elysia().route(
     'QUERY',
     '/',
-    async ({ body }) => {
-      const page = await listCustomers.execute(body);
-      return ok({
-        items: page.items.map(CustomerResponseDto.fromEntity),
-        total: page.total,
-        page: body.page,
-        limit: body.limit,
-      });
-    },
+    async ({ body }) =>
+      ok(
+        pageResponse(
+          await listCustomers.execute(body),
+          body,
+          CustomerResponseDto.fromEntity,
+        ),
+      ),
     {
       body: ListCustomersRequestSchema,
       response: {

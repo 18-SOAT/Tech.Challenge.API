@@ -44,14 +44,23 @@ export const authPlugin = (tokenService: TokenService) => {
     return pending;
   };
 
+  const authorize = async (options: AuthOptions, request: Request, authorization?: string) => {
+    const user = await verifyOnce(request, authorization);
+    if (options !== true && !(user.type === UserType.EMPLOYEE && options.roles.includes(user.role))) {
+      throw AuthError.forbidden();
+    }
+    return user;
+  };
+
   return new Elysia({ name: 'auth' }).macro({
-    auth: (options: true | { roles: EmployeeRole[] }) => ({
+    auth: (options: AuthOptions) => ({
+      // Antes da validação: 401/403 vêm antes de qualquer 400.
+      async transform({ headers, request }) {
+        await authorize(options, request, headers.authorization);
+      },
+      // Depois da validação: injeta o `user` tipado (verificação já memoizada).
       async resolve({ headers, request }) {
-        const user = await verifyOnce(request, headers.authorization);
-        if (options !== true && !(user.type === UserType.EMPLOYEE && options.roles.includes(user.role))) {
-          throw AuthError.forbidden();
-        }
-        return { user };
+        return { user: await authorize(options, request, headers.authorization) };
       },
     }),
   });
@@ -63,9 +72,12 @@ export type AuthPlugin = ReturnType<typeof authPlugin>;
 ### Conceitos
 
 - **Macro** é um "decorator de rota" do Elysia: uma propriedade customizada (`auth`) que, quando aparece nas opções da rota ou de um `.guard()`, injeta hooks naquela rota.
-- **`resolve`** roda depois da validação e antes do handler, e o que ele retorna **entra no contexto tipado**: depois dele o handler recebe `({ user })` com o tipo `AuthTokenPayload` inferido. Nada de `request.user` sem tipo nem cast.
+- **Ciclo de vida:** `parse → transform → validação (body/params) → resolve → handler`. A autenticação precisa acontecer **antes** da validação, senão uma requisição sem token e com body inválido recebe 400 em vez de 401 (o servidor valida dados de quem nem se autenticou e expõe as regras do schema). Por isso o macro tem dois hooks:
+  - **`transform`** roda antes da validação e barra quem não pode (401 sem token ou token inválido, 403 papel errado).
+  - **`resolve`** roda depois da validação e antes do handler, e o que ele retorna **entra no contexto tipado**: o handler recebe `({ user })` com o tipo `AuthTokenPayload` inferido. Nada de `request.user` sem tipo nem cast. O `transform` não serve para isso porque o que ele retorna não entra no contexto.
+  - O `test/http-foundation.e2e.spec.ts` garante a ordem (sem token + body inválido → 401; papel errado + body inválido → 403).
 - **Lançar `AuthError`** em vez de `return status(401)`: o erro passa pelo `errorHandler` global, então a resposta sai no envelope padrão e o código entra no `STATUS_MAP` (ver [Tratamento de erros](error-handling.md)).
-- **`verifyOnce` (memo por `Request`)**: o guard do `index.ts` e o `auth: true` do handler rodam o `resolve` duas vezes no mesmo request (ver [Controller](controller.md#handler-que-precisa-do-usuário-logado)). A `WeakMap` guarda a verificação daquele request, e ela é liberada junto com o request.
+- **`verifyOnce` (memo por `Request`)**: `transform` + `resolve`, e ainda o guard do `index.ts` + o `auth: true` do handler, chamam a verificação várias vezes no mesmo request (ver [Controller](controller.md#handler-que-precisa-do-usuário-logado)). A `WeakMap` guarda a verificação daquele request, e ela é liberada junto com o request.
 - **`name: 'auth'`**: o Elysia deduplica plugins com o mesmo nome, então todos os módulos podem fazer `.use(auth)` com a mesma instância sem registrar o macro várias vezes. A instância é criada uma vez no `createApp` e repassada aos módulos.
 
 ## Uso

@@ -1,6 +1,7 @@
 import { createApp } from './app.js';
 import { makeAuthContainer } from './modules/auth/auth.container.js';
 import { makeCustomerContainer } from './modules/customer/customer.container.js';
+import { makeVehicleContainer } from './modules/vehicle/vehicle.container.js';
 import { readEnv } from './shared/infrastructure/config/env.js';
 import { makeSharedContainer } from './shared/shared.container.js';
 
@@ -13,6 +14,7 @@ const app = createApp({
   databaseHealth: shared.databaseHealth,
   auth: makeAuthContainer(shared),
   customers: makeCustomerContainer(shared),
+  vehicles: makeVehicleContainer(shared),
 })
   .onStop(() => shared.prisma.$disconnect())
   .listen(env.PORT);

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'bun:test';
 import { AuthErrorCode } from '../../../modules/auth/domain/errors/auth.error.js';
 import { CustomerErrorCode } from '../../../modules/customer/domain/errors/customer.error.js';
 import { UserErrorCode } from '../../../modules/user/domain/errors/user.error.js';
+import { VehicleErrorCode } from '../../../modules/vehicle/domain/errors/vehicle.error.js';
 import { SharedErrorCode } from '../../domain/errors/shared.error.js';
 import { STATUS_MAP } from './error-handler.plugin.js';
 
@@ -11,6 +12,7 @@ const ALL_ERROR_CODES = [
   AuthErrorCode,
   UserErrorCode,
   CustomerErrorCode,
+  VehicleErrorCode,
   SharedErrorCode,
 ].flatMap((codes) => Object.values(codes));
 
