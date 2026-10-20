@@ -120,7 +120,7 @@ Com um status só, um reparo adicional obrigaria a voltar uma OS "Em execução"
 | `Customer` | — | `Document`, `Email`, `Phone` | Documento válido, único e imutável; e-mail obrigatório (canal de contato e do primeiro acesso), pode repetir entre clientes e funcionários (único é o e-mail de login, no `User`); não é excluído se tiver login, veículos ou OS. |
 | `Employee` | — | — | Papel `ADMIN` ou `MECHANIC`, alterado só por ADMIN; sempre resta ao menos um ADMIN. |
 | `Vehicle` | — | `LicensePlate` | Placa válida e única (pode ser corrigida ou convertida para Mercosul); pertence a um cliente (por ID), que não muda; ano entre 1900 e o ano seguinte ao atual; não é excluído se tiver OS. |
-| `Service` | — | `Money` | Preço ≥ 0; inativo não entra em orçamento novo. |
+| `Service` | — | `Money` | Nome único no catálogo (sem diferenciar maiúscula); preço ≥ 0 com até 2 casas; duração estimada, se informada, em minutos > 0; inativo não entra em orçamento novo; não é excluído se já entrou em OS (desativa-se). |
 | `Product` | `StockMovement` | `Money` | Saldo nunca negativo; todo saldo muda por movimentação. |
 | `Order` | — | — | Entrega só com todas as OS terminais (regra validada em `Order.deliver(...)` com os status recebidos do use case). |
 | `ServiceOrder` | `ServiceItem`, `ProductItem`, `ServiceOrderStatusHistory` | `Money` | Transições só pelo fluxo acima; responsável é MECHANIC; itens só antes do orçamento; aprovação congela o valor; toda transição grava histórico. |
@@ -168,6 +168,10 @@ Os eventos **não viram classes**. No MVP, nenhum consumidor reage a eles de for
 | `Veículo cadastrado` | `Vehicle.create()` | linha em `vehicles` |
 | `Dados do veículo alterados` | `Vehicle.update()` | `vehicles` (placa, marca, modelo, ano) |
 | `Veículo excluído` | `VehicleRepository.delete()` | linha removida de `vehicles` |
+| `Serviço cadastrado` | `Service.create()` | linha em `services` (ativo) |
+| `Dados do serviço alterados` | `Service.update()` | `services` (nome, descrição, preço, duração) |
+| `Serviço desativado` / `Serviço reativado` | `Service.deactivate()` / `activate()` | `services.active` |
+| `Serviço excluído` | `ServiceRepository.delete()` | linha removida de `services` |
 | `Ordem aberta` | `Order.open()` | `orders` em `RECEIVED` |
 | `OS criada` | `ServiceOrder.create()` | `service_orders` + histórico `IN_DIAGNOSIS` |
 | `Mecânico atribuído` | `ServiceOrder.assign(mechanicId)` | `service_orders.assignee_id` |
