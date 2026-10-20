@@ -3,6 +3,9 @@ import { AuthClaimsResolver } from '../../src/modules/auth/application/services/
 import { GetMeUseCase } from '../../src/modules/auth/application/use-cases/get-me.use-case.js';
 import { LoginUseCase } from '../../src/modules/auth/application/use-cases/login.use-case.js';
 import { RegisterCustomerUseCase } from '../../src/modules/auth/application/use-cases/register-customer.use-case.js';
+import { RequestFirstAccessUseCase } from '../../src/modules/auth/application/use-cases/request-first-access.use-case.js';
+import { RequestPasswordResetUseCase } from '../../src/modules/auth/application/use-cases/request-password-reset.use-case.js';
+import { SetPasswordUseCase } from '../../src/modules/auth/application/use-cases/set-password.use-case.js';
 import { CreateCustomerUseCase } from '../../src/modules/customer/application/use-cases/create-customer.use-case.js';
 import { DeleteCustomerUseCase } from '../../src/modules/customer/application/use-cases/delete-customer.use-case.js';
 import { FindCustomerByIdUseCase } from '../../src/modules/customer/application/use-cases/find-customer-by-id.use-case.js';
@@ -26,10 +29,13 @@ import { DeleteVehicleUseCase } from '../../src/modules/vehicle/application/use-
 import { FindVehicleByIdUseCase } from '../../src/modules/vehicle/application/use-cases/find-vehicle-by-id.use-case.js';
 import { ListVehiclesUseCase } from '../../src/modules/vehicle/application/use-cases/list-vehicles.use-case.js';
 import { UpdateVehicleUseCase } from '../../src/modules/vehicle/application/use-cases/update-vehicle.use-case.js';
+import { FakeAccessLinkMailer } from './fake-access-link-mailer.js';
+import { FakeAccessLinkTokenService } from './fake-access-link-token-service.js';
 import { FakeDatabaseHealthCheck } from './fake-database-health.js';
 import { FakePasswordHasher } from './fake-password-hasher.js';
 import { FakeTokenService } from './fake-token-service.js';
 import { InMemoryCustomerRepository } from './in-memory-customer.repository.js';
+import { InMemoryCustomerAccessActivationRepository } from './in-memory-customer-access-activation.repository.js';
 import { InMemoryCustomerRegistrationRepository } from './in-memory-customer-registration.repository.js';
 import { InMemoryEmployeeRepository } from './in-memory-employee.repository.js';
 import { InMemoryProductRepository } from './in-memory-product.repository.js';
@@ -50,6 +56,8 @@ export function makeTestApp() {
   const stockMovements = new InMemoryStockMovementRepository(products);
   const hasher = new FakePasswordHasher();
   const tokens = new FakeTokenService();
+  const accessLinks = new FakeAccessLinkTokenService();
+  const mailer = new FakeAccessLinkMailer();
   const claims = new AuthClaimsResolver(customers, employees);
   const database = new FakeDatabaseHealthCheck();
 
@@ -65,6 +73,23 @@ export function makeTestApp() {
       ),
       login: new LoginUseCase(users, hasher, tokens, claims),
       getMe: new GetMeUseCase(users, claims),
+      requestFirstAccess: new RequestFirstAccessUseCase(
+        customers,
+        accessLinks,
+        mailer,
+      ),
+      requestPasswordReset: new RequestPasswordResetUseCase(
+        users,
+        accessLinks,
+        mailer,
+      ),
+      setPassword: new SetPasswordUseCase(
+        accessLinks,
+        customers,
+        users,
+        new InMemoryCustomerAccessActivationRepository(users, customers),
+        hasher,
+      ),
     },
     customers: {
       createCustomer: new CreateCustomerUseCase(customers),
@@ -110,6 +135,8 @@ export function makeTestApp() {
     products,
     stockMovements,
     tokens,
+    accessLinks,
+    mailer,
     database,
   };
 }

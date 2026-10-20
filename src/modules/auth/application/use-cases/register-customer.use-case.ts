@@ -41,8 +41,8 @@ export class RegisterCustomerUseCase
     if (await this.userRepository.findByEmail(email.value)) {
       throw UserError.emailAlreadyInUse();
     }
-    // TODO: quando existir o CRUD de clientes, um Customer criado no balcão (sem userId)
-    // deve ser VINCULADO ao novo login (primeiro acesso), em vez de dar conflito.
+    // Cliente cadastrado no balcão não se auto-cadastra: o caminho dele é o primeiro
+    // acesso (POST /auth/first-access), que prova a posse do e-mail cadastrado.
     if (await this.customerRepository.findByDocument(document.value)) {
       throw CustomerError.documentAlreadyInUse();
     }
