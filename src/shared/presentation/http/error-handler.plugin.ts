@@ -1,6 +1,7 @@
 import { Elysia, ValidationError } from 'elysia';
 import { AuthErrorCode } from '../../../modules/auth/domain/errors/auth.error.js';
 import { CustomerErrorCode } from '../../../modules/customer/domain/errors/customer.error.js';
+import { ServiceErrorCode } from '../../../modules/inventory/domain/errors/service.error.js';
 import { UserErrorCode } from '../../../modules/user/domain/errors/user.error.js';
 import { VehicleErrorCode } from '../../../modules/vehicle/domain/errors/vehicle.error.js';
 import { DomainError } from '../../domain/errors/domain.error.js';
@@ -32,7 +33,13 @@ export const STATUS_MAP: Record<string, number> = {
   [VehicleErrorCode.LICENSE_PLATE_ALREADY_IN_USE]: 409,
   [VehicleErrorCode.NOT_FOUND]: 404,
   [VehicleErrorCode.HAS_SERVICE_ORDERS]: 409,
+  [ServiceErrorCode.INVALID_NAME]: 400,
+  [ServiceErrorCode.INVALID_ESTIMATED_DURATION]: 400,
+  [ServiceErrorCode.NAME_ALREADY_IN_USE]: 409,
+  [ServiceErrorCode.NOT_FOUND]: 404,
+  [ServiceErrorCode.IN_USE]: 409,
   [SharedErrorCode.INVALID_EMAIL]: 400,
+  [SharedErrorCode.INVALID_MONEY]: 400,
 };
 
 const INTERNAL_ERROR_MESSAGE = 'Erro interno.';
