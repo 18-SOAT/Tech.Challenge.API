@@ -118,7 +118,7 @@ Com um status só, um reparo adicional obrigaria a voltar uma OS "Em execução"
 |---|---|---|---|
 | `User` | — | `Email`, `Password` | E-mail único; usuário inativo não autentica; o link de acesso vale uma vez. |
 | `Customer` | — | `Document`, `Email`, `Phone` | Documento válido, único e imutável; e-mail obrigatório (canal de contato e do primeiro acesso), pode repetir entre clientes e funcionários (único é o e-mail de login, no `User`); não é excluído se tiver login, veículos ou OS. |
-| `Employee` | — | — | Papel `ADMIN` ou `MECHANIC`, alterado só por ADMIN; sempre resta ao menos um ADMIN. |
+| `Employee` | — | `Email` | Nome obrigatório; papel `ADMIN` ou `MECHANIC`, alterado só por ADMIN; sempre resta ao menos um ADMIN (garantido também no banco, com os ADMINs travados na transação). O e-mail é o de login, lido do `User`. |
 | `Vehicle` | — | `LicensePlate` | Placa válida e única (pode ser corrigida ou convertida para Mercosul); pertence a um cliente (por ID), que não muda; ano entre 1900 e o ano seguinte ao atual; não é excluído se tiver OS. |
 | `Service` | — | `Money` | Nome único no catálogo (sem diferenciar maiúscula); preço ≥ 0 com até 2 casas; duração estimada, se informada, em minutos > 0; inativo não entra em orçamento novo; não é excluído se já entrou em OS (desativa-se). |
 | `Product` | `StockMovement` | `Money` | Saldo nunca negativo; todo saldo muda por movimentação. |
@@ -205,7 +205,7 @@ Se no futuro uma política precisar rodar fora da transação (ex: um e-mail com
   3. pelo link, o cliente define a senha, e isso cria o `User` e o liga ao `Customer`.
 - A resposta é sempre a mesma, com ou sem cadastro, para não revelar quais CPFs são clientes (proteção contra enumeração). Quem prova a posse da conta é o acesso ao e-mail, não o CPF.
 - **Redefinição de senha:** mesmo fluxo, a partir do e-mail.
-- **Funcionários:** o ADMIN cadastra o funcionário (nome, e-mail, papel) e o Sistema envia o link de acesso. O ADMIN pode alterar o papel depois, mas o último ADMIN não pode deixar de ser ADMIN.
+- **Funcionários:** o ADMIN cadastra o funcionário (nome, e-mail, papel) e o Sistema envia o link de acesso. O login nasce com uma senha aleatória que ninguém conhece, e o link é o mesmo da redefinição: se não chegar ou expirar, o funcionário pede outro pela redefinição de senha. O ADMIN pode alterar o papel depois, mas o último ADMIN não pode deixar de ser ADMIN. O papel novo vale a partir do próximo login.
 - **Link de acesso:** token assinado com finalidade "definir senha" e validade curta. Ele **vale uma vez** porque deixa de ser aceito assim que a senha é definida: no primeiro acesso, o cliente já tem login; na redefinição, o link carrega o carimbo da senha atual (`User.passwordStamp`), que muda quando a senha muda. Ele é separado do token de sessão (audiência própria): o link não vale como login, e o login não vale como link.
 
 ### Saldo insuficiente na aprovação
@@ -317,10 +317,12 @@ Cada elemento do modelo e o arquivo onde ele vive.
 | Aprovação atômica (aprovar + baixar estoque + histórico) | Port + adapter | `src/modules/service-order/domain/ports/service-order-approval.repository.ts` |
 | Movimentação atômica (lançamento + saldo do produto) | Port + adapter | `src/modules/inventory/domain/ports/stock-movement.repository.ts` |
 | Cadastro atômico (User + Customer) | Port + adapter | `src/modules/auth/domain/ports/customer-registration.repository.ts` |
+| Cadastro atômico do funcionário (User + Employee) | Port + adapter | `src/modules/employee/domain/ports/employee-registration.repository.ts` |
 | Ativação atômica do primeiro acesso (User + vínculo ao Customer) | Port + adapter | `src/modules/auth/domain/ports/customer-access-activation.repository.ts` |
 | Link de acesso | Port + adapter (JWT, audiência própria) | `src/shared/infrastructure/jwt/access-link-token.port.ts` |
 | E-mails do link de acesso | Port + Mailer | `src/modules/auth/domain/ports/access-link.mailer.ts`, `src/modules/auth/infrastructure/mailers/auth.mailer.ts` |
 | Primeiro acesso, redefinição, definir senha | Use cases | `src/modules/auth/application/use-cases/request-first-access.use-case.ts`, `request-password-reset.use-case.ts`, `set-password.use-case.ts` |
+| Cadastrar funcionário, alterar papel | Use cases | `src/modules/employee/application/use-cases/create-employee.use-case.ts`, `change-employee-role.use-case.ts` |
 | Envio de e-mail (link de acesso, orçamento) | Port + adapter (SMTP) | `src/shared/infrastructure/email/email-sender.port.ts` |
 | Erros de domínio | Catálogos por contexto | `src/modules/*/domain/errors/*.error.ts` |
 | Persistência | Prisma | `prisma/schema.prisma` |
