@@ -3,6 +3,11 @@ import { AuthClaimsResolver } from '../../src/modules/auth/application/services/
 import { GetMeUseCase } from '../../src/modules/auth/application/use-cases/get-me.use-case.js';
 import { LoginUseCase } from '../../src/modules/auth/application/use-cases/login.use-case.js';
 import { RegisterCustomerUseCase } from '../../src/modules/auth/application/use-cases/register-customer.use-case.js';
+import { CreateCustomerUseCase } from '../../src/modules/customer/application/use-cases/create-customer.use-case.js';
+import { DeleteCustomerUseCase } from '../../src/modules/customer/application/use-cases/delete-customer.use-case.js';
+import { FindCustomerByIdUseCase } from '../../src/modules/customer/application/use-cases/find-customer-by-id.use-case.js';
+import { ListCustomersUseCase } from '../../src/modules/customer/application/use-cases/list-customers.use-case.js';
+import { UpdateCustomerUseCase } from '../../src/modules/customer/application/use-cases/update-customer.use-case.js';
 import { FakeDatabaseHealthCheck } from './fake-database-health.js';
 import { FakePasswordHasher } from './fake-password-hasher.js';
 import { FakeTokenService } from './fake-token-service.js';
@@ -34,6 +39,13 @@ export function makeTestApp() {
       ),
       login: new LoginUseCase(users, hasher, tokens, claims),
       getMe: new GetMeUseCase(users, claims),
+    },
+    customers: {
+      createCustomer: new CreateCustomerUseCase(customers),
+      listCustomers: new ListCustomersUseCase(customers),
+      findCustomerById: new FindCustomerByIdUseCase(customers),
+      updateCustomer: new UpdateCustomerUseCase(customers),
+      deleteCustomer: new DeleteCustomerUseCase(customers),
     },
   });
 

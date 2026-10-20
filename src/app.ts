@@ -3,6 +3,8 @@ import { Elysia } from 'elysia';
 import pkg from '../package.json' with { type: 'json' };
 import type { AuthUseCases } from './modules/auth/auth.container.js';
 import { authRoutes } from './modules/auth/presentation/index.js';
+import type { CustomerUseCases } from './modules/customer/customer.container.js';
+import { customerRoutes } from './modules/customer/presentation/index.js';
 import type { DatabaseHealthCheck } from './shared/infrastructure/health/database-health.port.js';
 import type { TokenService } from './shared/infrastructure/jwt/token-service.port.js';
 import { authPlugin } from './shared/presentation/auth/auth.plugin.js';
@@ -14,6 +16,7 @@ export interface AppDeps {
   tokenService: TokenService;
   databaseHealth: DatabaseHealthCheck;
   auth: AuthUseCases;
+  customers: CustomerUseCases;
 }
 
 // Monta a aplicação sem subir servidor: o server.ts passa os containers reais e o
@@ -42,6 +45,10 @@ export function createApp(deps: AppDeps) {
               name: 'Auth',
               description: 'Cadastro de cliente, login e usuário autenticado',
             },
+            {
+              name: 'Customers',
+              description: 'Gestão de clientes pelo atendente (ADMIN)',
+            },
           ],
           components: {
             securitySchemes: {
@@ -57,7 +64,8 @@ export function createApp(deps: AppDeps) {
     )
     .use(auth)
     .use(healthHandler(deps.databaseHealth))
-    .use(authRoutes(deps.auth, auth));
+    .use(authRoutes(deps.auth, auth))
+    .use(customerRoutes(deps.customers, auth));
 }
 
 export type App = ReturnType<typeof createApp>;

@@ -117,7 +117,7 @@ Com um status só, um reparo adicional obrigaria a voltar uma OS "Em execução"
 | Agregado (raiz) | Dentro do agregado | Value Objects | Invariantes principais |
 |---|---|---|---|
 | `User` | — | `Email`, `Password` | E-mail único; usuário inativo não autentica; o link de acesso vale uma vez. |
-| `Customer` | — | `Document`, `Email`, `Phone` | Documento válido e único; e-mail obrigatório (canal do primeiro acesso). |
+| `Customer` | — | `Document`, `Email`, `Phone` | Documento válido, único e imutável; e-mail obrigatório (canal de contato e do primeiro acesso), pode repetir entre clientes e funcionários (único é o e-mail de login, no `User`); não é excluído se tiver login, veículos ou OS. |
 | `Employee` | — | — | Papel `ADMIN` ou `MECHANIC`, alterado só por ADMIN; sempre resta ao menos um ADMIN. |
 | `Vehicle` | — | `LicensePlate` | Placa válida e única; pertence a um cliente (por ID). |
 | `Service` | — | `Money` | Preço ≥ 0; inativo não entra em orçamento novo. |
@@ -163,6 +163,8 @@ Os eventos **não viram classes**. No MVP, nenhum consumidor reage a eles de for
 | Evento | Método | Registro persistido |
 |---|---|---|
 | `Cliente cadastrado` | `Customer.create()` | linha em `customers` |
+| `Dados do cliente alterados` | `Customer.update()` | `customers` (nome, e-mail, telefone) |
+| `Cliente excluído` | `Customer.assertCanBeRemoved()` + `CustomerRepository.delete()` | linha removida de `customers` |
 | `Veículo cadastrado` | `Vehicle.create()` | linha em `vehicles` |
 | `Ordem aberta` | `Order.open()` | `orders` em `RECEIVED` |
 | `OS criada` | `ServiceOrder.create()` | `service_orders` + histórico `IN_DIAGNOSIS` |

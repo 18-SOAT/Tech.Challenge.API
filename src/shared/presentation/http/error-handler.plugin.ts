@@ -19,7 +19,11 @@ export const STATUS_MAP: Record<string, number> = {
   [UserErrorCode.INVALID_PASSWORD]: 400,
   [CustomerErrorCode.INVALID_DOCUMENT]: 400,
   [CustomerErrorCode.INVALID_PHONE]: 400,
+  [CustomerErrorCode.INVALID_NAME]: 400,
   [CustomerErrorCode.DOCUMENT_ALREADY_IN_USE]: 409,
+  [CustomerErrorCode.NOT_FOUND]: 404,
+  [CustomerErrorCode.HAS_LINKED_ACCESS]: 409,
+  [CustomerErrorCode.HAS_DEPENDENCIES]: 409,
   [SharedErrorCode.INVALID_EMAIL]: 400,
 };
 
