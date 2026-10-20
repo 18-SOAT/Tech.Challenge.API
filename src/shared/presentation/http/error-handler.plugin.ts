@@ -1,6 +1,7 @@
 import { Elysia, ValidationError } from 'elysia';
 import { AuthErrorCode } from '../../../modules/auth/domain/errors/auth.error.js';
 import { CustomerErrorCode } from '../../../modules/customer/domain/errors/customer.error.js';
+import { ProductErrorCode } from '../../../modules/inventory/domain/errors/product.error.js';
 import { ServiceErrorCode } from '../../../modules/inventory/domain/errors/service.error.js';
 import { UserErrorCode } from '../../../modules/user/domain/errors/user.error.js';
 import { VehicleErrorCode } from '../../../modules/vehicle/domain/errors/vehicle.error.js';
@@ -38,6 +39,15 @@ export const STATUS_MAP: Record<string, number> = {
   [ServiceErrorCode.NAME_ALREADY_IN_USE]: 409,
   [ServiceErrorCode.NOT_FOUND]: 404,
   [ServiceErrorCode.IN_USE]: 409,
+  [ProductErrorCode.INVALID_SKU]: 400,
+  [ProductErrorCode.INVALID_NAME]: 400,
+  [ProductErrorCode.INVALID_MINIMUM_STOCK]: 400,
+  [ProductErrorCode.INVALID_QUANTITY]: 400,
+  [ProductErrorCode.ADJUSTMENT_REASON_REQUIRED]: 400,
+  [ProductErrorCode.INSUFFICIENT_STOCK]: 409,
+  [ProductErrorCode.SKU_ALREADY_IN_USE]: 409,
+  [ProductErrorCode.NOT_FOUND]: 404,
+  [ProductErrorCode.IN_USE]: 409,
   [SharedErrorCode.INVALID_EMAIL]: 400,
   [SharedErrorCode.INVALID_MONEY]: 400,
 };

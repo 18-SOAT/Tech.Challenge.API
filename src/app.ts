@@ -6,7 +6,10 @@ import { authRoutes } from './modules/auth/presentation/index.js';
 import type { CustomerUseCases } from './modules/customer/customer.container.js';
 import { customerRoutes } from './modules/customer/presentation/index.js';
 import type { InventoryUseCases } from './modules/inventory/inventory.container.js';
-import { serviceRoutes } from './modules/inventory/presentation/index.js';
+import {
+  productRoutes,
+  serviceRoutes,
+} from './modules/inventory/presentation/index.js';
 import { vehicleRoutes } from './modules/vehicle/presentation/index.js';
 import type { VehicleUseCases } from './modules/vehicle/vehicle.container.js';
 import type { DatabaseHealthCheck } from './shared/infrastructure/health/database-health.port.js';
@@ -65,6 +68,11 @@ export function createApp(deps: AppDeps) {
               description:
                 'Catálogo de serviços: escrita pelo ADMIN, consulta também pelo MECHANIC',
             },
+            {
+              name: 'Products',
+              description:
+                'Peças e insumos com estoque por movimentação: escrita pelo ADMIN, consulta também pelo MECHANIC',
+            },
           ],
           components: {
             securitySchemes: {
@@ -83,7 +91,8 @@ export function createApp(deps: AppDeps) {
     .use(authRoutes(deps.auth, auth))
     .use(customerRoutes(deps.customers, auth))
     .use(vehicleRoutes(deps.vehicles, auth))
-    .use(serviceRoutes(deps.inventory, auth));
+    .use(serviceRoutes(deps.inventory, auth))
+    .use(productRoutes(deps.inventory, auth));
 }
 
 export type App = ReturnType<typeof createApp>;

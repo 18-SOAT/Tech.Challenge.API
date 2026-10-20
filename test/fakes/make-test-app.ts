@@ -8,10 +8,18 @@ import { DeleteCustomerUseCase } from '../../src/modules/customer/application/us
 import { FindCustomerByIdUseCase } from '../../src/modules/customer/application/use-cases/find-customer-by-id.use-case.js';
 import { ListCustomersUseCase } from '../../src/modules/customer/application/use-cases/list-customers.use-case.js';
 import { UpdateCustomerUseCase } from '../../src/modules/customer/application/use-cases/update-customer.use-case.js';
+import { AdjustStockUseCase } from '../../src/modules/inventory/application/use-cases/adjust-stock.use-case.js';
+import { CreateProductUseCase } from '../../src/modules/inventory/application/use-cases/create-product.use-case.js';
 import { CreateServiceUseCase } from '../../src/modules/inventory/application/use-cases/create-service.use-case.js';
+import { DeleteProductUseCase } from '../../src/modules/inventory/application/use-cases/delete-product.use-case.js';
 import { DeleteServiceUseCase } from '../../src/modules/inventory/application/use-cases/delete-service.use-case.js';
+import { FindProductByIdUseCase } from '../../src/modules/inventory/application/use-cases/find-product-by-id.use-case.js';
 import { FindServiceByIdUseCase } from '../../src/modules/inventory/application/use-cases/find-service-by-id.use-case.js';
+import { ListProductsUseCase } from '../../src/modules/inventory/application/use-cases/list-products.use-case.js';
 import { ListServicesUseCase } from '../../src/modules/inventory/application/use-cases/list-services.use-case.js';
+import { ListStockMovementsUseCase } from '../../src/modules/inventory/application/use-cases/list-stock-movements.use-case.js';
+import { ReceiveStockUseCase } from '../../src/modules/inventory/application/use-cases/receive-stock.use-case.js';
+import { UpdateProductUseCase } from '../../src/modules/inventory/application/use-cases/update-product.use-case.js';
 import { UpdateServiceUseCase } from '../../src/modules/inventory/application/use-cases/update-service.use-case.js';
 import { CreateVehicleUseCase } from '../../src/modules/vehicle/application/use-cases/create-vehicle.use-case.js';
 import { DeleteVehicleUseCase } from '../../src/modules/vehicle/application/use-cases/delete-vehicle.use-case.js';
@@ -24,7 +32,9 @@ import { FakeTokenService } from './fake-token-service.js';
 import { InMemoryCustomerRepository } from './in-memory-customer.repository.js';
 import { InMemoryCustomerRegistrationRepository } from './in-memory-customer-registration.repository.js';
 import { InMemoryEmployeeRepository } from './in-memory-employee.repository.js';
+import { InMemoryProductRepository } from './in-memory-product.repository.js';
 import { InMemoryServiceRepository } from './in-memory-service.repository.js';
+import { InMemoryStockMovementRepository } from './in-memory-stock-movement.repository.js';
 import { InMemoryUserRepository } from './in-memory-user.repository.js';
 import { InMemoryVehicleRepository } from './in-memory-vehicle.repository.js';
 
@@ -36,6 +46,8 @@ export function makeTestApp() {
   const employees = new InMemoryEmployeeRepository();
   const vehicles = new InMemoryVehicleRepository();
   const services = new InMemoryServiceRepository();
+  const products = new InMemoryProductRepository();
+  const stockMovements = new InMemoryStockMovementRepository(products);
   const hasher = new FakePasswordHasher();
   const tokens = new FakeTokenService();
   const claims = new AuthClaimsResolver(customers, employees);
@@ -74,6 +86,17 @@ export function makeTestApp() {
       findServiceById: new FindServiceByIdUseCase(services),
       updateService: new UpdateServiceUseCase(services),
       deleteService: new DeleteServiceUseCase(services),
+      createProduct: new CreateProductUseCase(products),
+      listProducts: new ListProductsUseCase(products),
+      findProductById: new FindProductByIdUseCase(products),
+      updateProduct: new UpdateProductUseCase(products),
+      deleteProduct: new DeleteProductUseCase(products),
+      receiveStock: new ReceiveStockUseCase(products, stockMovements),
+      adjustStock: new AdjustStockUseCase(products, stockMovements),
+      listStockMovements: new ListStockMovementsUseCase(
+        products,
+        stockMovements,
+      ),
     },
   });
 
@@ -84,6 +107,8 @@ export function makeTestApp() {
     employees,
     vehicles,
     services,
+    products,
+    stockMovements,
     tokens,
     database,
   };
