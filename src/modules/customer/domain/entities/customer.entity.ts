@@ -7,7 +7,7 @@ import { Phone } from '../value-objects/phone.vo.js';
 export class Customer {
   private constructor(
     private readonly id: string,
-    private readonly userId: string | null,
+    private userId: string | null,
     private name: string | null,
     private readonly document: Document,
     private email: Email,
@@ -62,6 +62,13 @@ export class Customer {
       this.name = Customer.validName(changes.name);
     if (changes.email !== undefined) this.email = changes.email;
     if (changes.phone !== undefined) this.phone = changes.phone;
+  }
+
+  // Primeiro acesso: liga o login criado pelo link ao cliente cadastrado no balcão.
+  // Um cliente tem no máximo um login.
+  linkUser(userId: string): void {
+    if (this.userId !== null) throw CustomerError.alreadyHasAccess();
+    this.userId = userId;
   }
 
   // Excluir quem tem login deixaria um User CUSTOMER sem perfil — o login quebraria.

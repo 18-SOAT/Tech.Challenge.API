@@ -15,4 +15,15 @@ export class PrismaUserRepository implements UserRepository {
     const record = await this.prisma.user.findUnique({ where: { email } });
     return record ? UserMapper.toEntity(record) : null;
   }
+
+  async replacePassword(
+    user: User,
+    previousHashedPassword: string,
+  ): Promise<boolean> {
+    const { count } = await this.prisma.user.updateMany({
+      where: { id: user.idValue, hashedPassword: previousHashedPassword },
+      data: { hashedPassword: user.hashedPassword },
+    });
+    return count === 1;
+  }
 }

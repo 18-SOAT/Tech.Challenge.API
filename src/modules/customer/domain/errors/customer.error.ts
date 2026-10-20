@@ -7,6 +7,7 @@ export enum CustomerErrorCode {
   DOCUMENT_ALREADY_IN_USE = 'CUSTOMER_DOCUMENT_ALREADY_IN_USE',
   NOT_FOUND = 'CUSTOMER_NOT_FOUND',
   HAS_LINKED_ACCESS = 'CUSTOMER_HAS_LINKED_ACCESS',
+  ALREADY_HAS_ACCESS = 'CUSTOMER_ALREADY_HAS_ACCESS',
   HAS_DEPENDENCIES = 'CUSTOMER_HAS_DEPENDENCIES',
 }
 
@@ -57,6 +58,13 @@ export class CustomerError extends DomainError {
     return new CustomerError(
       CustomerErrorCode.HAS_LINKED_ACCESS,
       'Cliente com acesso ativo não pode ser excluído.',
+    );
+  }
+
+  static alreadyHasAccess(): CustomerError {
+    return new CustomerError(
+      CustomerErrorCode.ALREADY_HAS_ACCESS,
+      'Cliente já possui acesso.',
     );
   }
 
