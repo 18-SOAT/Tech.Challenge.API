@@ -1,7 +1,7 @@
 import type { AccessLinkMailer } from '../../src/modules/auth/domain/ports/access-link.mailer.js';
 
 export interface SentAccessLink {
-  kind: 'first-access' | 'password-reset';
+  kind: 'first-access' | 'password-reset' | 'employee-access';
   to: string;
   token: string;
 }
@@ -23,6 +23,17 @@ export class FakeAccessLinkMailer implements AccessLinkMailer {
     token: string;
   }): Promise<void> {
     this.record({ kind: 'password-reset', to: params.to, token: params.token });
+  }
+
+  async sendEmployeeAccessLink(params: {
+    to: string;
+    token: string;
+  }): Promise<void> {
+    this.record({
+      kind: 'employee-access',
+      to: params.to,
+      token: params.token,
+    });
   }
 
   get lastToken(): string {
