@@ -1,5 +1,12 @@
 # tech-challenge-api
 
+## 2.2.0
+
+### Minor Changes
+
+- 5fc7e5c: Melhoria: adiciona o CRUD de peças e insumos (/products) com controle de estoque por livro-razão: entrada e ajuste (motivo obrigatório) gravam a movimentação e o saldo na mesma transação, extrato por produto e consulta de produtos abaixo do estoque mínimo
+- dfa2f90: Melhoria: adiciona o CRUD do catálogo de serviços (/services), com preço validado pelo VO Money, desativação e consulta pelo mecânico
+
 ## 2.1.0
 
 ### Minor Changes
