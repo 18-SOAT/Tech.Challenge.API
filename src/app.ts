@@ -52,7 +52,8 @@ export function createApp(deps: AppDeps) {
             },
             {
               name: 'Auth',
-              description: 'Cadastro de cliente, login e usuário autenticado',
+              description:
+                'Cadastro de cliente, login, primeiro acesso e redefinição de senha por link enviado ao e-mail, e usuário autenticado',
             },
             {
               name: 'Customers',
