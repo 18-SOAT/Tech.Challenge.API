@@ -187,8 +187,8 @@ Os eventos **não viram classes**. No MVP, nenhum consumidor reage a eles de for
 | `Produto cadastrado` | `Product.create()` | linha em `products` |
 | `Entrada de estoque registrada` | `Product.receive(qty)` | `stock_movements` `IN` |
 | `Estoque ajustado` | `Product.adjust(delta, reason)` | `stock_movements` `ADJUSTMENT` com o delta com sinal |
-| `Primeiro acesso solicitado` → `Link de acesso enviado` | use case de primeiro acesso + `EmailSender.send()` | — (token assinado, não persistido) |
-| `Acesso ativado` | `User.create()` / `User.changePassword()` | linha em `users` (+ `customers.user_id`) |
+| `Primeiro acesso solicitado` → `Link de acesso enviado` | `RequestFirstAccessUseCase` / `RequestPasswordResetUseCase` + `AccessLinkMailer` | — (token assinado, não persistido) |
+| `Acesso ativado` | `User.create()` + `Customer.linkUser()` (primeiro acesso) / `User.changePassword()` (redefinição) | linha em `users` (+ `customers.user_id`) / `users.hashed_password` |
 | `Funcionário cadastrado` | `Employee.create()` | `users` + `employees` |
 | `Papel do funcionário alterado` | `Employee.changeRole(role)` | `employees.role` |
 
@@ -206,7 +206,7 @@ Se no futuro uma política precisar rodar fora da transação (ex: um e-mail com
 - A resposta é sempre a mesma, com ou sem cadastro, para não revelar quais CPFs são clientes (proteção contra enumeração). Quem prova a posse da conta é o acesso ao e-mail, não o CPF.
 - **Redefinição de senha:** mesmo fluxo, a partir do e-mail.
 - **Funcionários:** o ADMIN cadastra o funcionário (nome, e-mail, papel) e o Sistema envia o link de acesso. O ADMIN pode alterar o papel depois, mas o último ADMIN não pode deixar de ser ADMIN.
-- **Link de acesso:** token assinado com finalidade "definir senha" e validade curta. Ele **vale uma vez** porque deixa de ser aceito assim que a senha é definida.
+- **Link de acesso:** token assinado com finalidade "definir senha" e validade curta. Ele **vale uma vez** porque deixa de ser aceito assim que a senha é definida: no primeiro acesso, o cliente já tem login; na redefinição, o link carrega o carimbo da senha atual (`User.passwordStamp`), que muda quando a senha muda. Ele é separado do token de sessão (audiência própria): o link não vale como login, e o login não vale como link.
 
 ### Saldo insuficiente na aprovação
 
@@ -317,6 +317,10 @@ Cada elemento do modelo e o arquivo onde ele vive.
 | Aprovação atômica (aprovar + baixar estoque + histórico) | Port + adapter | `src/modules/service-order/domain/ports/service-order-approval.repository.ts` |
 | Movimentação atômica (lançamento + saldo do produto) | Port + adapter | `src/modules/inventory/domain/ports/stock-movement.repository.ts` |
 | Cadastro atômico (User + Customer) | Port + adapter | `src/modules/auth/domain/ports/customer-registration.repository.ts` |
-| Envio de e-mail (link de acesso, orçamento) | Port | `src/shared/infrastructure/email/email-sender.port.ts` |
+| Ativação atômica do primeiro acesso (User + vínculo ao Customer) | Port + adapter | `src/modules/auth/domain/ports/customer-access-activation.repository.ts` |
+| Link de acesso | Port + adapter (JWT, audiência própria) | `src/shared/infrastructure/jwt/access-link-token.port.ts` |
+| E-mails do link de acesso | Port + Mailer | `src/modules/auth/domain/ports/access-link.mailer.ts`, `src/modules/auth/infrastructure/mailers/auth.mailer.ts` |
+| Primeiro acesso, redefinição, definir senha | Use cases | `src/modules/auth/application/use-cases/request-first-access.use-case.ts`, `request-password-reset.use-case.ts`, `set-password.use-case.ts` |
+| Envio de e-mail (link de acesso, orçamento) | Port + adapter (SMTP) | `src/shared/infrastructure/email/email-sender.port.ts` |
 | Erros de domínio | Catálogos por contexto | `src/modules/*/domain/errors/*.error.ts` |
 | Persistência | Prisma | `prisma/schema.prisma` |

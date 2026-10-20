@@ -9,7 +9,14 @@ import { AuthClaimsResolver } from './application/services/auth-claims.resolver.
 import { GetMeUseCase } from './application/use-cases/get-me.use-case.js';
 import { LoginUseCase } from './application/use-cases/login.use-case.js';
 import { RegisterCustomerUseCase } from './application/use-cases/register-customer.use-case.js';
+import { RequestFirstAccessUseCase } from './application/use-cases/request-first-access.use-case.js';
+import { RequestPasswordResetUseCase } from './application/use-cases/request-password-reset.use-case.js';
+import { SetPasswordUseCase } from './application/use-cases/set-password.use-case.js';
+import type { AccessLinkMailer } from './domain/ports/access-link.mailer.js';
+import type { CustomerAccessActivationRepository } from './domain/ports/customer-access-activation.repository.js';
 import type { CustomerRegistrationRepository } from './domain/ports/customer-registration.repository.js';
+import { AuthMailer } from './infrastructure/mailers/auth.mailer.js';
+import { PrismaCustomerAccessActivationRepository } from './infrastructure/persistence/prisma-customer-access-activation.repository.js';
 import { PrismaCustomerRegistrationRepository } from './infrastructure/persistence/prisma-customer-registration.repository.js';
 
 // Composition root do módulo: o único arquivo que liga port → adapter.
@@ -25,6 +32,12 @@ export function makeAuthContainer(shared: SharedContainer) {
   );
   const registrationRepository: CustomerRegistrationRepository =
     new PrismaCustomerRegistrationRepository(shared.prisma);
+  const activationRepository: CustomerAccessActivationRepository =
+    new PrismaCustomerAccessActivationRepository(shared.prisma);
+  const mailer: AccessLinkMailer = new AuthMailer(
+    shared.emailSender,
+    shared.appUrl,
+  );
   const claimsResolver = new AuthClaimsResolver(
     customerRepository,
     employeeRepository,
@@ -44,6 +57,23 @@ export function makeAuthContainer(shared: SharedContainer) {
       claimsResolver,
     ),
     getMe: new GetMeUseCase(userRepository, claimsResolver),
+    requestFirstAccess: new RequestFirstAccessUseCase(
+      customerRepository,
+      shared.accessLinkTokenService,
+      mailer,
+    ),
+    requestPasswordReset: new RequestPasswordResetUseCase(
+      userRepository,
+      shared.accessLinkTokenService,
+      mailer,
+    ),
+    setPassword: new SetPasswordUseCase(
+      shared.accessLinkTokenService,
+      customerRepository,
+      userRepository,
+      activationRepository,
+      shared.passwordHasher,
+    ),
   };
 }
 

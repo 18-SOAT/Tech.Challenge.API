@@ -6,6 +6,7 @@ export enum AuthErrorCode {
   TOKEN_INVALID = 'AUTH_TOKEN_INVALID',
   USER_UNAVAILABLE = 'AUTH_USER_UNAVAILABLE',
   FORBIDDEN = 'AUTH_FORBIDDEN',
+  ACCESS_LINK_INVALID = 'AUTH_ACCESS_LINK_INVALID',
 }
 
 export class AuthError extends DomainError {
@@ -50,6 +51,14 @@ export class AuthError extends DomainError {
     return new AuthError(
       AuthErrorCode.FORBIDDEN,
       'Acesso não permitido para este usuário.',
+    );
+  }
+
+  // Mensagem única pra expirado, já usado, adulterado ou de outra finalidade.
+  static accessLinkInvalid(): AuthError {
+    return new AuthError(
+      AuthErrorCode.ACCESS_LINK_INVALID,
+      'Link de acesso inválido, expirado ou já utilizado. Solicite um novo.',
     );
   }
 }

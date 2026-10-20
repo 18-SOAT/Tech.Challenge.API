@@ -11,4 +11,18 @@ export class InMemoryUserRepository implements UserRepository {
   async findByEmail(email: string): Promise<User | null> {
     return this.items.find((user) => user.emailValue === email) ?? null;
   }
+
+  // O update condicional do adapter Prisma protege contra corrida entre requisições;
+  // aqui (thread única) basta gravar. A chave simula a condição não bater.
+  rejectNextReplace = false;
+
+  async replacePassword(user: User): Promise<boolean> {
+    const index = this.items.findIndex((u) => u.idValue === user.idValue);
+    if (index === -1 || this.rejectNextReplace) {
+      this.rejectNextReplace = false;
+      return false;
+    }
+    this.items[index] = user;
+    return true;
+  }
 }

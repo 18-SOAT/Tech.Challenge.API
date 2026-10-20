@@ -22,7 +22,8 @@ export const makeUser = (
     ...overrides,
   });
 
-export const makeCustomer = (userId: string) =>
+// `null` = cliente cadastrado no balcão, ainda sem login (caso do primeiro acesso).
+export const makeCustomer = (userId: string | null) =>
   Customer.restore({
     id: 'customer-1',
     userId,

@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { IdGenerator } from '../../../../shared/domain/id-generator.js';
 import { Email } from '../../../../shared/domain/value-objects/email.vo.js';
 import type { UserType } from '../enums/user-type.enum.js';
@@ -7,7 +8,7 @@ export class User {
   private constructor(
     private readonly id: string,
     private readonly email: Email,
-    private readonly passwordHash: string,
+    private passwordHash: string,
     private readonly type: UserType,
     private readonly active: boolean,
   ) {}
@@ -49,6 +50,22 @@ export class User {
     hasher: PasswordHasher,
   ): Promise<boolean> {
     return hasher.compare(plainTextPassword, this.passwordHash);
+  }
+
+  // Recebe o hash pronto pelo mesmo motivo do verifyPassword: a entity decide QUANDO
+  // trocar, o hasher decide COMO. Trocar a senha também invalida o passwordStamp.
+  changePassword(newHashedPassword: string): void {
+    this.passwordHash = newHashedPassword;
+  }
+
+  // Carimbo da senha atual, levado no link de redefinição: o link só vale enquanto a
+  // senha for a mesma — é o que faz ele valer UMA vez sem guardar o token no banco.
+  // Derivado do hash (que já tem salt) e truncado: o JWT é legível, o hash não vai cru.
+  get passwordStamp(): string {
+    return createHash('sha256')
+      .update(this.passwordHash)
+      .digest('base64url')
+      .slice(0, 22);
   }
 
   get idValue(): string {

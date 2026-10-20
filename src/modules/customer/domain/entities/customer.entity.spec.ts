@@ -125,4 +125,31 @@ describe('Customer', () => {
       );
     });
   });
+
+  describe('linkUser', () => {
+    it('liga o login criado no primeiro acesso ao cliente do balcão', () => {
+      const customer = Customer.create({
+        name: 'João',
+        document: Document.create('52998224725'),
+        email: Email.create('joao@oficina.com'),
+      });
+
+      customer.linkUser('user-1');
+
+      expect(customer.userIdValue).toBe('user-1');
+    });
+
+    it('um cliente tem no máximo um login', () => {
+      const customer = Customer.create({
+        userId: 'user-1',
+        document: Document.create('52998224725'),
+        email: Email.create('joao@oficina.com'),
+      });
+
+      expect(() => customer.linkUser('user-2')).toThrow(
+        expect.objectContaining({ code: CustomerErrorCode.ALREADY_HAS_ACCESS }),
+      );
+      expect(customer.userIdValue).toBe('user-1');
+    });
+  });
 });

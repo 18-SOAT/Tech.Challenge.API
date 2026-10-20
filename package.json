@@ -45,6 +45,7 @@
     "bcryptjs": "^3.0.3",
     "elysia": "^1.4.30",
     "jose": "^6.2.12",
+    "nodemailer": "^10.1.7",
     "pg": "^8.23.0",
     "uuid": "^14.0.2"
   },
@@ -52,6 +53,7 @@
     "@biomejs/biome": "^2.5.12",
     "@changesets/cli": "^3.0.2",
     "@types/bun": "^1.4.3",
+    "@types/nodemailer": "^8.0.2",
     "dotenv": "^18.0.3",
     "husky": "^9.1.7",
     "lint-staged": "^17.5.0",

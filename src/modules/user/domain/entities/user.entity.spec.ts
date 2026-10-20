@@ -47,4 +47,34 @@ describe('User', () => {
     expect(user.isActive).toBe(false);
     expect(user.hashedPassword).toBe('hashed:x');
   });
+
+  it('changePassword troca o hash e muda o carimbo (invalida o link de redefinição)', () => {
+    const user = User.restore({
+      id: 'user-1',
+      email: 'joao@oficina.com',
+      hashedPassword: 'hashed:antiga',
+      type: UserType.CUSTOMER,
+      active: true,
+    });
+    const stampBefore = user.passwordStamp;
+
+    user.changePassword('hashed:nova');
+
+    expect(user.hashedPassword).toBe('hashed:nova');
+    expect(user.passwordStamp).not.toBe(stampBefore);
+  });
+
+  it('passwordStamp é estável e não expõe o hash', () => {
+    const make = () =>
+      User.restore({
+        id: 'user-1',
+        email: 'joao@oficina.com',
+        hashedPassword: 'hashed:senha-forte',
+        type: UserType.CUSTOMER,
+        active: true,
+      });
+
+    expect(make().passwordStamp).toBe(make().passwordStamp);
+    expect(make().passwordStamp).not.toContain('senha-forte');
+  });
 });
