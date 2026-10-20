@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import { AuthErrorCode } from '../../../modules/auth/domain/errors/auth.error.js';
 import { CustomerErrorCode } from '../../../modules/customer/domain/errors/customer.error.js';
+import { EmployeeErrorCode } from '../../../modules/employee/domain/errors/employee.error.js';
 import { ProductErrorCode } from '../../../modules/inventory/domain/errors/product.error.js';
 import { ServiceErrorCode } from '../../../modules/inventory/domain/errors/service.error.js';
 import { UserErrorCode } from '../../../modules/user/domain/errors/user.error.js';
@@ -13,6 +14,7 @@ import { STATUS_MAP } from './error-handler.plugin.js';
 const ALL_ERROR_CODES = [
   AuthErrorCode,
   UserErrorCode,
+  EmployeeErrorCode,
   CustomerErrorCode,
   VehicleErrorCode,
   ServiceErrorCode,

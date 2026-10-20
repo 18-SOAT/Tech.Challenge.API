@@ -1,6 +1,7 @@
 import { Elysia, ValidationError } from 'elysia';
 import { AuthErrorCode } from '../../../modules/auth/domain/errors/auth.error.js';
 import { CustomerErrorCode } from '../../../modules/customer/domain/errors/customer.error.js';
+import { EmployeeErrorCode } from '../../../modules/employee/domain/errors/employee.error.js';
 import { ProductErrorCode } from '../../../modules/inventory/domain/errors/product.error.js';
 import { ServiceErrorCode } from '../../../modules/inventory/domain/errors/service.error.js';
 import { UserErrorCode } from '../../../modules/user/domain/errors/user.error.js';
@@ -21,6 +22,9 @@ export const STATUS_MAP: Record<string, number> = {
   [AuthErrorCode.ACCESS_LINK_INVALID]: 400,
   [UserErrorCode.EMAIL_ALREADY_IN_USE]: 409,
   [UserErrorCode.INVALID_PASSWORD]: 400,
+  [EmployeeErrorCode.INVALID_NAME]: 400,
+  [EmployeeErrorCode.NOT_FOUND]: 404,
+  [EmployeeErrorCode.LAST_ADMIN]: 409,
   [CustomerErrorCode.INVALID_DOCUMENT]: 400,
   [CustomerErrorCode.INVALID_PHONE]: 400,
   [CustomerErrorCode.INVALID_NAME]: 400,
