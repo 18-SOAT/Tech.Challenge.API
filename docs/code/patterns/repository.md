@@ -127,7 +127,7 @@ async approve(serviceOrder: ServiceOrder, movements: StockMovement[]): Promise<v
         where: { id: movement.productId, stockQuantity: { gte: movement.quantity } },
         data: { stockQuantity: { decrement: movement.quantity } },
       });
-      if (count === 0) throw InventoryError.insufficientStock();
+      if (count === 0) throw ProductError.insufficientStock();
 
       await tx.stockMovement.create({ data: StockMovementMapper.toObject(movement) });
     }

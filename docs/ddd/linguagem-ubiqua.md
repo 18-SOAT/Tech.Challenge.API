@@ -72,7 +72,7 @@ Os contextos se referenciam **só por ID**. Uma OS guarda `productId` e `service
 | Insumo | `ProductType.SUPPLY` | Produto consumido no serviço (ex: óleo, fluido). |
 | Estoque mínimo | `Product.minimumStock` | Saldo abaixo do qual o produto aparece em "Produtos abaixo do mínimo". |
 | Produtos abaixo do mínimo | read model | Consulta dos produtos com `stockQuantity < minimumStock`, usada pelo atendente para repor. |
-| Movimentação de estoque | `StockMovement` | Lançamento no livro-razão do estoque: `IN` (entrada), `OUT` (saída/baixa), `ADJUSTMENT` (ajuste de inventário). Todo saldo muda por uma movimentação. |
+| Movimentação de estoque | `StockMovement` | Lançamento no livro-razão do estoque: `IN` (entrada), `OUT` (saída/baixa), `ADJUSTMENT` (ajuste de inventário). Todo saldo muda por uma movimentação. `IN`/`OUT` guardam unidades positivas; o ajuste guarda a diferença com sinal (-3 = 3 a menos), então o saldo é a soma dos lançamentos. |
 | Baixa de estoque | `StockMovement` `OUT` | Saída das peças/insumos de uma OS, feita na aprovação do orçamento. |
 | Ordem / Estadia | `Order` | Período do veículo na oficina, da chegada à entrega. Agrupa todas as OS da visita e tem número legível (`number`). |
 | Ordem de Serviço (OS) | `ServiceOrder` | Unidade de trabalho com serviços e peças. Nasce como orçamento e, aprovada, vira a OS executada. |
@@ -186,7 +186,7 @@ Os eventos **não viram classes**. No MVP, nenhum consumidor reage a eles de for
 | `Ordem entregue` | `Order.deliver(statusDasOS)` | `orders` em `DELIVERED` + `delivered_at` |
 | `Produto cadastrado` | `Product.create()` | linha em `products` |
 | `Entrada de estoque registrada` | `Product.receive(qty)` | `stock_movements` `IN` |
-| `Estoque ajustado` | `Product.adjust(qty, reason)` | `stock_movements` `ADJUSTMENT` |
+| `Estoque ajustado` | `Product.adjust(delta, reason)` | `stock_movements` `ADJUSTMENT` com o delta com sinal |
 | `Primeiro acesso solicitado` → `Link de acesso enviado` | use case de primeiro acesso + `EmailSender.send()` | — (token assinado, não persistido) |
 | `Acesso ativado` | `User.create()` / `User.changePassword()` | linha em `users` (+ `customers.user_id`) |
 | `Funcionário cadastrado` | `Employee.create()` | `users` + `employees` |
@@ -306,6 +306,7 @@ Cada elemento do modelo e o arquivo onde ele vive.
 | `LicensePlate` | VO | `src/modules/vehicle/domain/value-objects/license-plate.vo.ts` |
 | `Service` | Entidade (raiz) | `src/modules/inventory/domain/entities/service.entity.ts` |
 | `Product` | Entidade (raiz) | `src/modules/inventory/domain/entities/product.entity.ts` |
+| Catálogo de produtos | Repository | `src/modules/inventory/domain/repositories/product.repository.ts` |
 | `StockMovement` | Entidade | `src/modules/inventory/domain/entities/stock-movement.entity.ts` |
 | `ProductType`, `StockMovementType` | Enums | `src/modules/inventory/domain/enums/` |
 | `Order` | Entidade (raiz) | `src/modules/service-order/domain/entities/order.entity.ts` |
@@ -314,6 +315,7 @@ Cada elemento do modelo e o arquivo onde ele vive.
 | `ServiceOrderStatusHistory` | Entidade | `src/modules/service-order/domain/entities/service-order-status-history.entity.ts` |
 | `OrderStatus`, `ServiceOrderStatus` | Enums | `src/modules/service-order/domain/enums/` |
 | Aprovação atômica (aprovar + baixar estoque + histórico) | Port + adapter | `src/modules/service-order/domain/ports/service-order-approval.repository.ts` |
+| Movimentação atômica (lançamento + saldo do produto) | Port + adapter | `src/modules/inventory/domain/ports/stock-movement.repository.ts` |
 | Cadastro atômico (User + Customer) | Port + adapter | `src/modules/auth/domain/ports/customer-registration.repository.ts` |
 | Envio de e-mail (link de acesso, orçamento) | Port | `src/shared/infrastructure/email/email-sender.port.ts` |
 | Erros de domínio | Catálogos por contexto | `src/modules/*/domain/errors/*.error.ts` |
