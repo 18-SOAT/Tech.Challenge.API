@@ -31,15 +31,16 @@ docker compose down      # para os containers (mantém os dados)
 docker compose down -v   # para e apaga o volume do banco
 ```
 
-### Usuário de demonstração
+### Usuários de demonstração
 
-O seed cria um funcionário **ADMIN** (idempotente: rodar de novo não duplica):
+O seed cria dois funcionários (idempotente: rodar de novo não duplica):
 
-| E-mail | Senha |
-|---|---|
-| `admin@oficina.com` | `admin12345` |
+| Papel | E-mail | Senha |
+|---|---|---|
+| ADMIN | `admin@oficina.com` | `admin12345` |
+| MECHANIC | `mecanico@oficina.com` | `mecanico12345` |
 
-Altere com `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` no `.env`. Para autenticar: `POST /auth/login` com essas credenciais e use o `accessToken` como `Authorization: Bearer <token>`.
+Altere com `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` e `SEED_MECHANIC_EMAIL` / `SEED_MECHANIC_PASSWORD` no `.env`. Novos funcionários são cadastrados pelo ADMIN em `POST /employees` e recebem por e-mail o link para definir a senha. Para autenticar: `POST /auth/login` com essas credenciais e use o `accessToken` como `Authorization: Bearer <token>`.
 
 ## Rodando localmente (sem Docker para a API)
 

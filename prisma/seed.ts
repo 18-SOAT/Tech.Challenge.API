@@ -6,15 +6,29 @@ import { IdGenerator } from '../src/shared/domain/id-generator.js';
 import { Email } from '../src/shared/domain/value-objects/email.vo.js';
 import { createPrismaClient } from '../src/shared/infrastructure/prisma/client.js';
 
-// Seed de demonstração: um funcionário ADMIN para autenticar nas rotas administrativas.
+// Seed de demonstração: um ADMIN para autenticar nas rotas administrativas e um
+// MECHANIC para demonstrar a divisão de papéis (403 nas rotas de escrita).
 // Idempotente: se o e-mail já existe, não mexe em nada (nem na senha) — pode rodar a
 // cada `docker compose up` sem duplicar. Roda via `prisma db seed` (prisma.config.ts).
 // As credenciais padrão são públicas de propósito (README); troque via env fora da demo.
-const email = Email.create(process.env.SEED_ADMIN_EMAIL || 'admin@oficina.com');
-const password = Password.create(
-  process.env.SEED_ADMIN_PASSWORD || 'admin12345',
-);
-const name = process.env.SEED_ADMIN_NAME || 'Administrador';
+const demoEmployees = [
+  {
+    email: Email.create(process.env.SEED_ADMIN_EMAIL || 'admin@oficina.com'),
+    password: Password.create(process.env.SEED_ADMIN_PASSWORD || 'admin12345'),
+    name: process.env.SEED_ADMIN_NAME || 'Administrador',
+    role: EmployeeRole.ADMIN,
+  },
+  {
+    email: Email.create(
+      process.env.SEED_MECHANIC_EMAIL || 'mecanico@oficina.com',
+    ),
+    password: Password.create(
+      process.env.SEED_MECHANIC_PASSWORD || 'mecanico12345',
+    ),
+    name: process.env.SEED_MECHANIC_NAME || 'Mecânico',
+    role: EmployeeRole.MECHANIC,
+  },
+];
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {
@@ -22,38 +36,32 @@ if (!databaseUrl) {
 }
 
 const prisma = createPrismaClient(databaseUrl);
+const hasher = new BcryptPasswordHasher();
 
 try {
-  const existing = await prisma.user.findUnique({
-    where: { email: email.value },
-  });
-
-  if (existing) {
-    console.log(`🌱 Seed: ${email.value} já existe, nada a fazer.`);
-  } else {
-    const hashedPassword = await new BcryptPasswordHasher().hash(
-      password.value,
-    );
-    const userId = IdGenerator.generate();
+  for (const { email, password, name, role } of demoEmployees) {
+    const existing = await prisma.user.findUnique({
+      where: { email: email.value },
+    });
+    if (existing) {
+      console.log(`🌱 Seed: ${email.value} já existe, nada a fazer.`);
+      continue;
+    }
 
     // Nested create: User e Employee no mesmo INSERT transacional — nunca sobra
     // um User de funcionário sem Employee.
     await prisma.user.create({
       data: {
-        id: userId,
+        id: IdGenerator.generate(),
         email: email.value,
-        hashedPassword,
+        hashedPassword: await hasher.hash(password.value),
         type: UserType.EMPLOYEE,
         employee: {
-          create: {
-            id: IdGenerator.generate(),
-            name,
-            role: EmployeeRole.ADMIN,
-          },
+          create: { id: IdGenerator.generate(), name, role },
         },
       },
     });
-    console.log(`🌱 Seed: ADMIN ${email.value} criado.`);
+    console.log(`🌱 Seed: ${role} ${email.value} criado.`);
   }
 } finally {
   await prisma.$disconnect();
