@@ -1,5 +1,6 @@
 # Ambiente completo: `docker compose up --build`.
 # Ordem de subida: postgres (healthy) → migrate (migrations + seed, encerra) → api.
+# Mailpit captura os e-mails (link de acesso) — caixa de entrada em http://localhost:8025.
 # Variáveis vêm do .env (o compose lê sozinho para interpolar ${...}); ver .env.example.
 
 name: tech-challenge
@@ -26,6 +27,14 @@ services:
       timeout: 5s
       retries: 10
 
+  # SMTP de demonstração: aceita qualquer e-mail e não entrega a ninguém, só mostra
+  # na interface web. Para envio real, defina SMTP_* no .env (ver .env.example).
+  mailpit:
+    image: axllent/mailpit:v1.27
+    ports:
+      - "${MAILPIT_UI_PORT:-8025}:8025"
+      - "${MAILPIT_SMTP_PORT:-1025}:1025"
+
   # Job de execução única (como um Job/initContainer no Kubernetes): migração é uma
   # tarefa, não parte do processo da API — e a imagem da API fica sem o CLI do Prisma.
   migrate:
@@ -50,12 +59,22 @@ services:
       DATABASE_URL: *database-url
       JWT_SECRET: ${JWT_SECRET:?Defina JWT_SECRET no .env (ver .env.example)}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-1h}
+      ACCESS_LINK_EXPIRES_IN: ${ACCESS_LINK_EXPIRES_IN:-15m}
+      APP_URL: ${APP_URL:-http://localhost:3000}
+      # Sem SMTP_* no .env = Mailpit (quem clonar o repo sobe sem credencial nenhuma).
+      SMTP_HOST: ${SMTP_HOST:-mailpit}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      MAIL_FROM: ${MAIL_FROM:-Oficina <nao-responda@oficina.local>}
       PORT: 3000
     ports:
       - "${PORT:-3000}:3000"
     depends_on:
       migrate:
         condition: service_completed_successfully
+      mailpit:
+        condition: service_started
     # A imagem slim não tem curl: o próprio Bun faz a requisição. O /health responde
     # 503 quando o banco cai, então o container fica unhealthy junto.
     healthcheck:

@@ -15,6 +15,9 @@ export interface JoseTokenServiceConfig {
 // um plugin JWT do Elysia). Ver docs/code/patterns/auth.md.
 export class JoseTokenService implements TokenService {
   private static readonly ALGORITHM = 'HS256';
+  // Audiência fixa: separa o token de sessão do link de acesso (mesmo segredo,
+  // finalidades diferentes). Ver access-link-token.port.ts.
+  static readonly AUDIENCE = 'session';
   private readonly key: Uint8Array;
 
   constructor(private readonly config: JoseTokenServiceConfig) {
@@ -24,6 +27,7 @@ export class JoseTokenService implements TokenService {
   sign(payload: AuthTokenPayload): Promise<string> {
     return new SignJWT({ ...pickAuthClaims(payload) })
       .setProtectedHeader({ alg: JoseTokenService.ALGORITHM })
+      .setAudience(JoseTokenService.AUDIENCE)
       .setIssuedAt()
       .setExpirationTime(this.config.expiresIn)
       .sign(this.key);
@@ -33,6 +37,7 @@ export class JoseTokenService implements TokenService {
     // `algorithms` fixo: impede aceitar um token com `alg` trocado pelo atacante.
     const { payload } = await jwtVerify(token, this.key, {
       algorithms: [JoseTokenService.ALGORITHM],
+      audience: JoseTokenService.AUDIENCE,
     });
     return pickAuthClaims(payload as unknown as AuthTokenPayload);
   }

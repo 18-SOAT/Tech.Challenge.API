@@ -20,14 +20,23 @@ describe('JoseTokenService', () => {
     role: EmployeeRole.ADMIN,
   };
 
-  it('o payload cru do JWT (o que qualquer um lê no jwt.io) só tem os claims + iat/exp', async () => {
+  it('o payload cru do JWT (o que qualquer um lê no jwt.io) só tem os claims + aud/iat/exp', async () => {
     const token = await service.sign(employee);
     const rawPayload = JSON.parse(
       Buffer.from(token.split('.')[1] ?? '', 'base64url').toString(),
     );
 
     expect(Object.keys(rawPayload).sort()).toStrictEqual(
-      ['email', 'employeeId', 'exp', 'iat', 'role', 'sub', 'type'].sort(),
+      [
+        'aud',
+        'email',
+        'employeeId',
+        'exp',
+        'iat',
+        'role',
+        'sub',
+        'type',
+      ].sort(),
     );
   });
 
@@ -41,6 +50,15 @@ describe('JoseTokenService', () => {
       .setProtectedHeader({ alg: 'HS256' })
       .sign(new TextEncoder().encode('outro'));
     await expect(service.verify(forged)).rejects.toThrow();
+  });
+
+  it('verify rejeita token sem a audiência de sessão (ex: link de acesso)', async () => {
+    const otherAudience = await new SignJWT({ ...employee })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setAudience('access-link')
+      .setExpirationTime('1h')
+      .sign(new TextEncoder().encode('test-secret'));
+    await expect(service.verify(otherAudience)).rejects.toThrow();
   });
 
   it('verify rejeita token expirado', async () => {
