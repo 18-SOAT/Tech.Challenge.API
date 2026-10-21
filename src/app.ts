@@ -12,6 +12,11 @@ import {
   productRoutes,
   serviceRoutes,
 } from './modules/inventory/presentation/index.js';
+import {
+  orderRoutes,
+  serviceOrderRoutes,
+} from './modules/service-order/presentation/index.js';
+import type { ServiceOrderUseCases } from './modules/service-order/service-order.container.js';
 import { vehicleRoutes } from './modules/vehicle/presentation/index.js';
 import type { VehicleUseCases } from './modules/vehicle/vehicle.container.js';
 import type { DatabaseHealthCheck } from './shared/infrastructure/health/database-health.port.js';
@@ -29,6 +34,7 @@ export interface AppDeps {
   vehicles: VehicleUseCases;
   inventory: InventoryUseCases;
   employees: EmployeeUseCases;
+  serviceOrders: ServiceOrderUseCases;
 }
 
 // Monta a aplicação sem subir servidor: o server.ts passa os containers reais e o
@@ -82,6 +88,11 @@ export function createApp(deps: AppDeps) {
               description:
                 'Peças e insumos com estoque por movimentação: escrita pelo ADMIN, consulta também pelo MECHANIC',
             },
+            {
+              name: 'Service Orders',
+              description:
+                'Ordem (estadia do veículo) e OS: abertura e atribuição pelo ADMIN; itens e diagnóstico pelo mecânico responsável ou ADMIN',
+            },
           ],
           components: {
             securitySchemes: {
@@ -102,7 +113,9 @@ export function createApp(deps: AppDeps) {
     .use(customerRoutes(deps.customers, auth))
     .use(vehicleRoutes(deps.vehicles, auth))
     .use(serviceRoutes(deps.inventory, auth))
-    .use(productRoutes(deps.inventory, auth));
+    .use(productRoutes(deps.inventory, auth))
+    .use(orderRoutes(deps.serviceOrders, auth))
+    .use(serviceOrderRoutes(deps.serviceOrders, auth));
 }
 
 export type App = ReturnType<typeof createApp>;
