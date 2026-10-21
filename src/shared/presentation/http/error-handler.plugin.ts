@@ -4,6 +4,8 @@ import { CustomerErrorCode } from '../../../modules/customer/domain/errors/custo
 import { EmployeeErrorCode } from '../../../modules/employee/domain/errors/employee.error.js';
 import { ProductErrorCode } from '../../../modules/inventory/domain/errors/product.error.js';
 import { ServiceErrorCode } from '../../../modules/inventory/domain/errors/service.error.js';
+import { OrderErrorCode } from '../../../modules/service-order/domain/errors/order.error.js';
+import { ServiceOrderErrorCode } from '../../../modules/service-order/domain/errors/service-order.error.js';
 import { UserErrorCode } from '../../../modules/user/domain/errors/user.error.js';
 import { VehicleErrorCode } from '../../../modules/vehicle/domain/errors/vehicle.error.js';
 import { DomainError } from '../../domain/errors/domain.error.js';
@@ -54,6 +56,20 @@ export const STATUS_MAP: Record<string, number> = {
   [ProductErrorCode.SKU_ALREADY_IN_USE]: 409,
   [ProductErrorCode.NOT_FOUND]: 404,
   [ProductErrorCode.IN_USE]: 409,
+  [OrderErrorCode.NOT_FOUND]: 404,
+  [OrderErrorCode.ALREADY_DELIVERED]: 409,
+  [OrderErrorCode.VEHICLE_HAS_OPEN_ORDER]: 409,
+  [OrderErrorCode.VEHICLE_NOT_OWNED_BY_CUSTOMER]: 422,
+  [ServiceOrderErrorCode.NOT_FOUND]: 404,
+  [ServiceOrderErrorCode.NOT_IN_DIAGNOSIS]: 409,
+  [ServiceOrderErrorCode.ALREADY_CLOSED]: 409,
+  [ServiceOrderErrorCode.INVALID_QUANTITY]: 400,
+  [ServiceOrderErrorCode.ITEM_NOT_FOUND]: 404,
+  [ServiceOrderErrorCode.INACTIVE_CATALOG_ITEM]: 409,
+  [ServiceOrderErrorCode.ASSIGNEE_NOT_MECHANIC]: 422,
+  [ServiceOrderErrorCode.NO_ASSIGNEE]: 409,
+  [ServiceOrderErrorCode.EMPTY_QUOTE]: 409,
+  [ServiceOrderErrorCode.NOT_ASSIGNED_TO_YOU]: 403,
   [SharedErrorCode.INVALID_EMAIL]: 400,
   [SharedErrorCode.INVALID_MONEY]: 400,
 };
