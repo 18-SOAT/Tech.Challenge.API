@@ -46,6 +46,9 @@ services:
       SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-}
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
       SEED_ADMIN_NAME: ${SEED_ADMIN_NAME:-}
+      SEED_MECHANIC_EMAIL: ${SEED_MECHANIC_EMAIL:-}
+      SEED_MECHANIC_PASSWORD: ${SEED_MECHANIC_PASSWORD:-}
+      SEED_MECHANIC_NAME: ${SEED_MECHANIC_NAME:-}
     depends_on:
       postgres:
         condition: service_healthy

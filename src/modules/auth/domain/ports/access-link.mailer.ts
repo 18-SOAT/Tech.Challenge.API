@@ -7,4 +7,10 @@ export interface AccessLinkMailer {
     token: string;
   }): Promise<void>;
   sendPasswordResetLink(params: { to: string; token: string }): Promise<void>;
+  // Funcionário recém-cadastrado pelo ADMIN: mesmo link da redefinição, outro texto.
+  sendEmployeeAccessLink(params: {
+    to: string;
+    employeeName: string;
+    token: string;
+  }): Promise<void>;
 }

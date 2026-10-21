@@ -5,6 +5,8 @@ import type { AuthUseCases } from './modules/auth/auth.container.js';
 import { authRoutes } from './modules/auth/presentation/index.js';
 import type { CustomerUseCases } from './modules/customer/customer.container.js';
 import { customerRoutes } from './modules/customer/presentation/index.js';
+import type { EmployeeUseCases } from './modules/employee/employee.container.js';
+import { employeeRoutes } from './modules/employee/presentation/index.js';
 import type { InventoryUseCases } from './modules/inventory/inventory.container.js';
 import {
   productRoutes,
@@ -26,6 +28,7 @@ export interface AppDeps {
   customers: CustomerUseCases;
   vehicles: VehicleUseCases;
   inventory: InventoryUseCases;
+  employees: EmployeeUseCases;
 }
 
 // Monta a aplicação sem subir servidor: o server.ts passa os containers reais e o
@@ -54,6 +57,11 @@ export function createApp(deps: AppDeps) {
               name: 'Auth',
               description:
                 'Cadastro de cliente, login, primeiro acesso e redefinição de senha por link enviado ao e-mail, e usuário autenticado',
+            },
+            {
+              name: 'Employees',
+              description:
+                'Equipe da oficina: cadastro com link de acesso e papel (ADMIN)',
             },
             {
               name: 'Customers',
@@ -90,6 +98,7 @@ export function createApp(deps: AppDeps) {
     .use(auth)
     .use(healthHandler(deps.databaseHealth))
     .use(authRoutes(deps.auth, auth))
+    .use(employeeRoutes(deps.employees, auth))
     .use(customerRoutes(deps.customers, auth))
     .use(vehicleRoutes(deps.vehicles, auth))
     .use(serviceRoutes(deps.inventory, auth))

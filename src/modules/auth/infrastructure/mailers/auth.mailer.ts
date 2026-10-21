@@ -54,6 +54,27 @@ export class AuthMailer implements AccessLinkMailer {
     });
   }
 
+  async sendEmployeeAccessLink(params: {
+    to: string;
+    employeeName: string;
+    token: string;
+  }): Promise<void> {
+    await this.emailSender.send({
+      to: params.to,
+      subject: 'Bem-vindo à equipe: defina sua senha',
+      body: [
+        `Olá, ${params.employeeName}!`,
+        '',
+        'Você foi cadastrado na equipe da oficina.',
+        'Para definir sua senha de acesso, use o link abaixo:',
+        '',
+        ...this.linkLines(params.token),
+        '',
+        'Se o link expirar, peça um novo em POST /auth/password-reset com este e-mail.',
+      ].join('\n'),
+    });
+  }
+
   private linkLines(token: string): string[] {
     const url = new URL('/auth/set-password', this.appUrl);
     url.searchParams.set('token', token);

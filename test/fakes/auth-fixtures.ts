@@ -33,5 +33,15 @@ export const makeCustomer = (userId: string | null) =>
     phone: '11987654321',
   });
 
-export const makeEmployee = (userId: string, role = EmployeeRole.MECHANIC) =>
-  Employee.restore({ id: 'employee-1', userId, name: 'Maria', role });
+export const makeEmployee = (
+  userId: string,
+  role = EmployeeRole.MECHANIC,
+  id = 'employee-1',
+) =>
+  Employee.restore({
+    id,
+    userId,
+    name: 'Maria',
+    email: `${id}@oficina.com`,
+    role,
+  });

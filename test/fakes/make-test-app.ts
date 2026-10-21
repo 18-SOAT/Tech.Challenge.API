@@ -11,6 +11,10 @@ import { DeleteCustomerUseCase } from '../../src/modules/customer/application/us
 import { FindCustomerByIdUseCase } from '../../src/modules/customer/application/use-cases/find-customer-by-id.use-case.js';
 import { ListCustomersUseCase } from '../../src/modules/customer/application/use-cases/list-customers.use-case.js';
 import { UpdateCustomerUseCase } from '../../src/modules/customer/application/use-cases/update-customer.use-case.js';
+import { ChangeEmployeeRoleUseCase } from '../../src/modules/employee/application/use-cases/change-employee-role.use-case.js';
+import { CreateEmployeeUseCase } from '../../src/modules/employee/application/use-cases/create-employee.use-case.js';
+import { FindEmployeeByIdUseCase } from '../../src/modules/employee/application/use-cases/find-employee-by-id.use-case.js';
+import { ListEmployeesUseCase } from '../../src/modules/employee/application/use-cases/list-employees.use-case.js';
 import { AdjustStockUseCase } from '../../src/modules/inventory/application/use-cases/adjust-stock.use-case.js';
 import { CreateProductUseCase } from '../../src/modules/inventory/application/use-cases/create-product.use-case.js';
 import { CreateServiceUseCase } from '../../src/modules/inventory/application/use-cases/create-service.use-case.js';
@@ -38,6 +42,7 @@ import { InMemoryCustomerRepository } from './in-memory-customer.repository.js';
 import { InMemoryCustomerAccessActivationRepository } from './in-memory-customer-access-activation.repository.js';
 import { InMemoryCustomerRegistrationRepository } from './in-memory-customer-registration.repository.js';
 import { InMemoryEmployeeRepository } from './in-memory-employee.repository.js';
+import { InMemoryEmployeeRegistrationRepository } from './in-memory-employee-registration.repository.js';
 import { InMemoryProductRepository } from './in-memory-product.repository.js';
 import { InMemoryServiceRepository } from './in-memory-service.repository.js';
 import { InMemoryStockMovementRepository } from './in-memory-stock-movement.repository.js';
@@ -90,6 +95,18 @@ export function makeTestApp() {
         new InMemoryCustomerAccessActivationRepository(users, customers),
         hasher,
       ),
+    },
+    employees: {
+      createEmployee: new CreateEmployeeUseCase(
+        users,
+        new InMemoryEmployeeRegistrationRepository(users, employees),
+        hasher,
+        accessLinks,
+        mailer,
+      ),
+      listEmployees: new ListEmployeesUseCase(employees),
+      findEmployeeById: new FindEmployeeByIdUseCase(employees),
+      changeEmployeeRole: new ChangeEmployeeRoleUseCase(employees),
     },
     customers: {
       createCustomer: new CreateCustomerUseCase(customers),

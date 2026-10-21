@@ -52,4 +52,19 @@ describe('AuthMailer', () => {
     expect(sender.sent[0]?.subject).toBe('Redefinição de senha');
     expect(sender.sent[0]?.body).toContain('/auth/set-password?token=t1');
   });
+
+  it('funcionário cadastrado: saúda pelo nome e leva o link com o token', async () => {
+    const { sender, mailer } = setup();
+    await mailer.sendEmployeeAccessLink({
+      to: 'maria@oficina.com',
+      employeeName: 'Maria',
+      token: 't2',
+    });
+
+    const [message] = sender.sent;
+    expect(message?.to).toBe('maria@oficina.com');
+    expect(message?.subject).toBe('Bem-vindo à equipe: defina sua senha');
+    expect(message?.body).toContain('Olá, Maria!');
+    expect(message?.body).toContain('/auth/set-password?token=t2');
+  });
 });
