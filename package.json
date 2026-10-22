@@ -19,6 +19,7 @@
     "test": "bun test",
     "test:watch": "bun test --watch",
     "test:cov": "bun test --coverage",
+    "test:integration": "bun test --path-ignore-patterns='node_modules/**' ./test/integration",
     "changeset": "changeset",
     "changeset:status": "changeset status --since=origin/main",
     "version": "changeset version",
