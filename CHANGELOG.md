@@ -1,5 +1,13 @@
 # tech-challenge-api
 
+## 2.3.0
+
+### Minor Changes
+
+- a9ec030: Melhoria: adiciona a criação da OS com orçamento automático. O ADMIN abre a ordem pelo CPF/CNPJ e pela placa (POST /orders, com os serviços pedidos no balcão) e atribui o mecânico (PATCH /service-orders/:id/assignee). O mecânico responsável (ou um ADMIN) inclui serviços e peças com o preço congelado do catálogo, corrige ou remove itens e conclui o diagnóstico (POST /service-orders/:id/complete-diagnosis), que gera o orçamento em AWAITING_APPROVAL e o envia ao e-mail do cliente. Também inclui o reparo adicional (POST /orders/:id/service-orders) e o detalhe da OS (GET /service-orders/:id)
+- 1422cfc: Melhoria: adiciona a gestão da equipe pelo ADMIN (POST/QUERY /employees, GET /employees/:id e PATCH /employees/:id/role): o funcionário cadastrado recebe por e-mail o link para definir a senha, e o papel pode ser alterado desde que sempre reste ao menos um ADMIN; o seed passa a criar também um MECHANIC de demonstração
+- ab79007: Melhoria: adiciona o primeiro acesso do cliente cadastrado no balcão (POST /auth/first-access, por CPF/CNPJ) e a redefinição de senha (POST /auth/password-reset), ambos com link de acesso enviado por e-mail (Mailpit no docker compose) e resposta sempre igual, com ou sem cadastro; o link (POST /auth/set-password) tem validade curta, vale uma vez e não é aceito como token de sessão
+
 ## 2.2.0
 
 ### Minor Changes
