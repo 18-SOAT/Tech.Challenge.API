@@ -1,6 +1,12 @@
 import { IdGenerator } from '../../../../shared/domain/id-generator.js';
+import { EmployeeRole } from '../../../employee/domain/enums/employee-role.enum.js';
 import { OrderStatus } from '../enums/order-status.enum.js';
 import { OrderError } from '../errors/order.error.js';
+import type { ServiceOrderActor } from './service-order.entity.js';
+
+// Quem aprova ou rejeita um orçamento, como vem das claims do token: o cliente
+// (pelo customerId) ou um funcionário.
+export type QuoteDecider = { customerId: string } | ServiceOrderActor;
 
 // Estadia do veículo na oficina, da chegada à entrega. Agrupa as OS da visita, que
 // são outro agregado e a referenciam pelo `orderId`.
@@ -61,6 +67,25 @@ export class Order {
   // Reparo adicional: só enquanto o veículo ainda está na oficina.
   assertAcceptsServiceOrders(): void {
     if (this.isDelivered) throw OrderError.alreadyDelivered();
+  }
+
+  // Quem decide o orçamento de uma OS desta Ordem: o cliente dono dela, ou o ADMIN
+  // registrando a decisão que o cliente deu no balcão ou por telefone. A regra fica
+  // aqui porque é a Ordem que sabe quem é o cliente.
+  assertQuoteCanBeDecidedBy(decider: QuoteDecider): void {
+    if ('customerId' in decider) {
+      if (decider.customerId === this.customerId) return;
+    } else if (decider.role === EmployeeRole.ADMIN) {
+      return;
+    }
+    throw OrderError.quoteDecisionForbidden();
+  }
+
+  // "Ordem em andamento": na primeira OS aprovada. Aprovar um reparo adicional com a
+  // Ordem já em andamento não muda nada.
+  start(): void {
+    if (this.isDelivered) throw OrderError.alreadyDelivered();
+    this.status = OrderStatus.IN_PROGRESS;
   }
 
   get isDelivered(): boolean {

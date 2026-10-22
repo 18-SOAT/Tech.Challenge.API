@@ -11,6 +11,7 @@ export enum ServiceOrderErrorCode {
   NO_ASSIGNEE = 'SERVICE_ORDER_NO_ASSIGNEE',
   EMPTY_QUOTE = 'SERVICE_ORDER_EMPTY_QUOTE',
   NOT_ASSIGNED_TO_YOU = 'SERVICE_ORDER_NOT_ASSIGNED_TO_YOU',
+  NOT_AWAITING_APPROVAL = 'SERVICE_ORDER_NOT_AWAITING_APPROVAL',
 }
 
 export class ServiceOrderError extends DomainError {
@@ -88,6 +89,13 @@ export class ServiceOrderError extends DomainError {
     return new ServiceOrderError(
       ServiceOrderErrorCode.NOT_ASSIGNED_TO_YOU,
       'Esta OS está atribuída a outro mecânico.',
+    );
+  }
+
+  static notAwaitingApproval(): ServiceOrderError {
+    return new ServiceOrderError(
+      ServiceOrderErrorCode.NOT_AWAITING_APPROVAL,
+      'O orçamento desta OS não está aguardando aprovação.',
     );
   }
 }
