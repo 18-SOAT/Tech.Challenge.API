@@ -5,6 +5,7 @@ export enum OrderErrorCode {
   ALREADY_DELIVERED = 'ORDER_ALREADY_DELIVERED',
   VEHICLE_HAS_OPEN_ORDER = 'ORDER_VEHICLE_HAS_OPEN_ORDER',
   VEHICLE_NOT_OWNED_BY_CUSTOMER = 'ORDER_VEHICLE_NOT_OWNED_BY_CUSTOMER',
+  QUOTE_DECISION_FORBIDDEN = 'ORDER_QUOTE_DECISION_FORBIDDEN',
 }
 
 export class OrderError extends DomainError {
@@ -37,6 +38,13 @@ export class OrderError extends DomainError {
     return new OrderError(
       OrderErrorCode.VEHICLE_NOT_OWNED_BY_CUSTOMER,
       'O veículo informado não pertence a esse cliente.',
+    );
+  }
+
+  static quoteDecisionForbidden(): OrderError {
+    return new OrderError(
+      OrderErrorCode.QUOTE_DECISION_FORBIDDEN,
+      'Só o cliente da ordem ou um ADMIN aprova ou rejeita o orçamento.',
     );
   }
 }

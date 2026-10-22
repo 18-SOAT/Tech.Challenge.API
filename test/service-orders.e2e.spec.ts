@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import { Customer } from '../src/modules/customer/domain/entities/customer.entity.js';
 import { EmployeeRole } from '../src/modules/employee/domain/enums/employee-role.enum.js';
+import { OrderStatus } from '../src/modules/service-order/domain/enums/order-status.enum.js';
 import { UserType } from '../src/modules/user/domain/enums/user-type.enum.js';
 import { makeEmployee } from './fakes/auth-fixtures.js';
 import { makeTestApp } from './fakes/make-test-app.js';
@@ -64,6 +65,28 @@ describe('Service Orders (e2e)', () => {
       body: { mechanicId: MECHANIC_ID },
     });
     return { orderId: opened.data.order.id as string, serviceOrderId };
+  };
+
+  const customerToken = (customerId = CUSTOMER_ID) =>
+    ctx.tokens.sign({
+      sub: `user-${customerId}`,
+      email: 'joao@cliente.com',
+      type: UserType.CUSTOMER,
+      customerId,
+    });
+
+  // Ordem aberta com 1 serviço + 2 filtros (saldo 10) e orçamento gerado.
+  const openQuote = async () => {
+    const ids = await openAssigned();
+    await call(`/service-orders/${ids.serviceOrderId}/products`, {
+      body: { productId: PRODUCT_ID, quantity: 2 },
+      token: mechanicToken,
+    });
+    await call(`/service-orders/${ids.serviceOrderId}/complete-diagnosis`, {
+      method: 'POST',
+      token: mechanicToken,
+    });
+    return ids;
   };
 
   beforeEach(async () => {
@@ -131,7 +154,12 @@ describe('Service Orders (e2e)', () => {
       },
     ];
 
-    it.each([...adminRoutes, ...teamRoutes])(
+    const decisionRoutes = [
+      { method: 'POST', path: `/service-orders/${UNKNOWN_ID}/approve` },
+      { method: 'POST', path: `/service-orders/${UNKNOWN_ID}/reject` },
+    ];
+
+    it.each([...adminRoutes, ...teamRoutes, ...decisionRoutes])(
       '401: $method $path sem token',
       async (route) => {
         const response = await call(route.path, { ...route, token: null });
@@ -294,6 +322,102 @@ describe('Service Orders (e2e)', () => {
         services: [],
       });
       expect(ctx.serviceOrders.items).toHaveLength(2);
+    });
+  });
+
+  describe('decisão do orçamento', () => {
+    it('o cliente aprova: valor congelado, estoque baixado e Ordem em andamento', async () => {
+      const { orderId, serviceOrderId } = await openQuote();
+
+      const response = await call(`/service-orders/${serviceOrderId}/approve`, {
+        method: 'POST',
+        token: await customerToken(),
+      });
+
+      expect(response.status).toBe(200);
+      const { data } = await readEnvelope(response);
+      expect(data).toMatchObject({
+        status: 'IN_EXECUTION',
+        total: 160.9,
+        approvedAmount: 160.9,
+      });
+      expect(data.approvedAt).toBeString();
+      expect(data.history.at(-1)).toMatchObject({
+        status: 'IN_EXECUTION',
+        changedById: null,
+      });
+      expect(ctx.products.items[0]?.stockQuantityValue).toBe(8);
+      expect(ctx.stockMovements.items).toHaveLength(1);
+      const order = await ctx.orders.findById(orderId);
+      expect(order?.statusValue).toBe(OrderStatus.IN_PROGRESS);
+    });
+
+    it('o ADMIN rejeita pelo cliente; decidir de novo dá 409', async () => {
+      const { serviceOrderId } = await openQuote();
+
+      const rejected = await call(`/service-orders/${serviceOrderId}/reject`, {
+        method: 'POST',
+      });
+      expect(rejected.status).toBe(200);
+      const { data } = await readEnvelope(rejected);
+      expect(data.status).toBe('REJECTED');
+      expect(data.history.at(-1).changedById).toBe(ADMIN_ID);
+      expect(ctx.products.items[0]?.stockQuantityValue).toBe(10);
+
+      const again = await call(`/service-orders/${serviceOrderId}/approve`, {
+        method: 'POST',
+      });
+      expect(again.status).toBe(409);
+    });
+
+    it('409 com saldo insuficiente: a OS continua aguardando aprovação', async () => {
+      const { serviceOrderId } = await openQuote();
+      ctx.products.setStock(PRODUCT_ID, 1);
+
+      const response = await call(`/service-orders/${serviceOrderId}/approve`, {
+        method: 'POST',
+        token: await customerToken(),
+      });
+
+      expect(response.status).toBe(409);
+      const detail = await readEnvelope(
+        await call(`/service-orders/${serviceOrderId}`),
+      );
+      expect(detail.data).toMatchObject({
+        status: 'AWAITING_APPROVAL',
+        approvedAmount: null,
+      });
+      expect(ctx.products.items[0]?.stockQuantityValue).toBe(1);
+    });
+
+    it('403 para outro cliente e para o MECHANIC', async () => {
+      const { serviceOrderId } = await openQuote();
+
+      const responses = await Promise.all([
+        call(`/service-orders/${serviceOrderId}/approve`, {
+          method: 'POST',
+          token: await customerToken(UNKNOWN_ID),
+        }),
+        call(`/service-orders/${serviceOrderId}/reject`, {
+          method: 'POST',
+          token: mechanicToken,
+        }),
+      ]);
+      for (const response of responses) expect(response.status).toBe(403);
+    });
+
+    it('409 antes do diagnóstico concluído; 404 para OS inexistente', async () => {
+      const { serviceOrderId } = await openAssigned();
+
+      const early = await call(`/service-orders/${serviceOrderId}/approve`, {
+        method: 'POST',
+      });
+      expect(early.status).toBe(409);
+
+      const missing = await call(`/service-orders/${UNKNOWN_ID}/reject`, {
+        method: 'POST',
+      });
+      expect(missing.status).toBe(404);
     });
   });
 

@@ -8,7 +8,7 @@ import { StockMovement } from './stock-movement.entity.js';
 const SKU_PATTERN = /^[A-Z0-9-]{1,40}$/;
 
 // Peça (PART) ou insumo (SUPPLY), vendido em unidades inteiras. O saldo só muda
-// por movimentação (receive/adjust): `update()` não aceita saldo, e todo método
+// por movimentação (receive/adjust/withdraw): `update()` não aceita saldo, e todo método
 // que mexe nele devolve o StockMovement que o use case grava na mesma transação.
 export class Product {
   private constructor(
@@ -147,6 +147,23 @@ export class Product {
       type: StockMovementType.ADJUSTMENT,
       quantity: delta,
       reason: justification,
+    });
+  }
+
+  // Baixa das peças de uma OS aprovada. O saldo lido aqui pode estar velho: quem
+  // garante o "nunca negativo" na corrida é o update condicional do adapter.
+  withdraw(quantity: number, serviceOrderId: string): StockMovement {
+    if (!Number.isInteger(quantity) || quantity <= 0) {
+      throw ProductError.invalidQuantity();
+    }
+    if (this.stockQuantity < quantity) throw ProductError.insufficientStock();
+
+    this.stockQuantity -= quantity;
+    return StockMovement.create({
+      productId: this.id,
+      type: StockMovementType.OUT,
+      quantity,
+      serviceOrderId,
     });
   }
 

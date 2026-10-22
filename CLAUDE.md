@@ -50,6 +50,7 @@ Sempre que for implementar algo, **explique o conceito antes de codar**:
 - `bun run typecheck` — `tsc --noEmit` (**o Bun executa TypeScript sem checar tipos** — esse script é o único que pega erro de tipo)
 - `bun test` — testes unitários + e2e (`*.spec.ts`)
 - `bun run test:cov` — cobertura (`bun test --coverage`)
+- `bun run test:integration` — testes de integração contra Postgres real (`test/integration/`; banco `TEST_DATABASE_URL`, padrão `mechanic_system_test`)
 - `bun run lint` — biome lint
 - `bun run format` — biome format --write
 - `bun run check` — biome check --write (lint + format, usado pelo lint-staged)
@@ -70,6 +71,7 @@ Sempre que for implementar algo, **explique o conceito antes de codar**:
 - Regras de negócio de domínio (entidades, value objects, use cases) têm teste unitário com `bun test`, sem subir o Elysia — teste a classe isolada, com os fakes de `test/fakes/`.
 - Testes de rota ficam em `test/*.e2e.spec.ts`: montam a app com `makeTestApp()` (`test/fakes/make-test-app.ts` — o `createApp` com fakes no lugar dos adapters) e chamam `app.handle(jsonRequest(...))` (`test/helpers/http.ts`) — sem servidor HTTP real, sem banco.
 - Todo módulo com rota protegida tem e2e chamando a rota **sem token** e esperando 401.
+- Testes de integração ficam em `test/integration/*.integration.spec.ts`: usam os adapters Prisma contra um banco `*_test` (`test/integration/database.ts` cria o banco, aplica as migrations e esvazia as tabelas). Ficam fora do `bun test` (`pathIgnorePatterns` no `bunfig.toml`) e rodam com `bun run test:integration`. Use para provar o que o fake não prova: rollback de transação e corrida resolvida por update condicional.
 - Cobertura: `bun run test:cov` exige 80% de linhas **por arquivo** (`bunfig.toml`); o CI roda `bun test --coverage`.
 - Imports de teste vêm de `bun:test` (`describe`, `it`, `expect`, `beforeEach`, `mock`).
 

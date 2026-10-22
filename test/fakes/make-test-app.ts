@@ -30,12 +30,14 @@ import { UpdateProductUseCase } from '../../src/modules/inventory/application/us
 import { UpdateServiceUseCase } from '../../src/modules/inventory/application/use-cases/update-service.use-case.js';
 import { AddProductItemUseCase } from '../../src/modules/service-order/application/use-cases/add-product-item.use-case.js';
 import { AddServiceItemUseCase } from '../../src/modules/service-order/application/use-cases/add-service-item.use-case.js';
+import { ApproveQuoteUseCase } from '../../src/modules/service-order/application/use-cases/approve-quote.use-case.js';
 import { AssignMechanicUseCase } from '../../src/modules/service-order/application/use-cases/assign-mechanic.use-case.js';
 import { ChangeItemQuantityUseCase } from '../../src/modules/service-order/application/use-cases/change-item-quantity.use-case.js';
 import { CompleteDiagnosisUseCase } from '../../src/modules/service-order/application/use-cases/complete-diagnosis.use-case.js';
 import { FindServiceOrderByIdUseCase } from '../../src/modules/service-order/application/use-cases/find-service-order-by-id.use-case.js';
 import { OpenAdditionalServiceOrderUseCase } from '../../src/modules/service-order/application/use-cases/open-additional-service-order.use-case.js';
 import { OpenOrderUseCase } from '../../src/modules/service-order/application/use-cases/open-order.use-case.js';
+import { RejectQuoteUseCase } from '../../src/modules/service-order/application/use-cases/reject-quote.use-case.js';
 import { RemoveItemUseCase } from '../../src/modules/service-order/application/use-cases/remove-item.use-case.js';
 import { CreateVehicleUseCase } from '../../src/modules/vehicle/application/use-cases/create-vehicle.use-case.js';
 import { DeleteVehicleUseCase } from '../../src/modules/vehicle/application/use-cases/delete-vehicle.use-case.js';
@@ -58,6 +60,7 @@ import { InMemoryOrderOpeningRepository } from './in-memory-order-opening.reposi
 import { InMemoryProductRepository } from './in-memory-product.repository.js';
 import { InMemoryServiceRepository } from './in-memory-service.repository.js';
 import { InMemoryServiceOrderRepository } from './in-memory-service-order.repository.js';
+import { InMemoryServiceOrderApprovalRepository } from './in-memory-service-order-approval.repository.js';
 import { InMemoryStockMovementRepository } from './in-memory-stock-movement.repository.js';
 import { InMemoryUserRepository } from './in-memory-user.repository.js';
 import { InMemoryVehicleRepository } from './in-memory-vehicle.repository.js';
@@ -81,6 +84,12 @@ export function makeTestApp() {
   const orders = new InMemoryOrderRepository();
   const serviceOrders = new InMemoryServiceOrderRepository();
   const quoteMailer = new FakeServiceOrderMailer();
+  const approval = new InMemoryServiceOrderApprovalRepository(
+    serviceOrders,
+    orders,
+    products,
+    stockMovements,
+  );
 
   const app = createApp({
     tokenService: tokens,
@@ -182,6 +191,13 @@ export function makeTestApp() {
         quoteMailer,
       ),
       findServiceOrderById: new FindServiceOrderByIdUseCase(serviceOrders),
+      approveQuote: new ApproveQuoteUseCase(
+        serviceOrders,
+        orders,
+        products,
+        approval,
+      ),
+      rejectQuote: new RejectQuoteUseCase(serviceOrders, orders, approval),
     },
   });
 

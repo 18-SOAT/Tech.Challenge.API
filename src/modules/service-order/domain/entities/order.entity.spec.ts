@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'bun:test';
+import { EmployeeRole } from '../../../employee/domain/enums/employee-role.enum.js';
 import { OrderStatus } from '../enums/order-status.enum.js';
 import { OrderErrorCode } from '../errors/order.error.js';
 import { Order } from './order.entity.js';
@@ -56,6 +57,54 @@ describe('Order', () => {
       const order = restore(OrderStatus.DELIVERED);
       expect(order.isDelivered).toBeTrue();
       expect(() => order.assertAcceptsServiceOrders()).toThrow(
+        expect.objectContaining({ code: OrderErrorCode.ALREADY_DELIVERED }),
+      );
+    });
+  });
+
+  describe('assertQuoteCanBeDecidedBy', () => {
+    const order = restore(OrderStatus.RECEIVED);
+
+    it('o cliente dono da ordem e o ADMIN decidem', () => {
+      expect(() =>
+        order.assertQuoteCanBeDecidedBy({ customerId: 'customer-1' }),
+      ).not.toThrow();
+      expect(() =>
+        order.assertQuoteCanBeDecidedBy({
+          employeeId: 'admin-1',
+          role: EmployeeRole.ADMIN,
+        }),
+      ).not.toThrow();
+    });
+
+    it('outro cliente e o MECHANIC não decidem', () => {
+      const forbidden = expect.objectContaining({
+        code: OrderErrorCode.QUOTE_DECISION_FORBIDDEN,
+      });
+      expect(() =>
+        order.assertQuoteCanBeDecidedBy({ customerId: 'customer-2' }),
+      ).toThrow(forbidden);
+      expect(() =>
+        order.assertQuoteCanBeDecidedBy({
+          employeeId: 'mechanic-1',
+          role: EmployeeRole.MECHANIC,
+        }),
+      ).toThrow(forbidden);
+    });
+  });
+
+  describe('start', () => {
+    it.each([OrderStatus.RECEIVED, OrderStatus.IN_PROGRESS])(
+      'de %s fica Em andamento',
+      (status) => {
+        const order = restore(status);
+        order.start();
+        expect(order.statusValue).toBe(OrderStatus.IN_PROGRESS);
+      },
+    );
+
+    it('recusa depois da entrega', () => {
+      expect(() => restore(OrderStatus.DELIVERED).start()).toThrow(
         expect.objectContaining({ code: OrderErrorCode.ALREADY_DELIVERED }),
       );
     });

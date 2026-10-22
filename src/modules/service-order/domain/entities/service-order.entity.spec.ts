@@ -372,4 +372,62 @@ describe('ServiceOrder', () => {
       );
     });
   });
+
+  describe('approve', () => {
+    it('congela o total como valor aprovado e vai para Em execução', () => {
+      const serviceOrder = awaitingApproval();
+
+      serviceOrder.approve(null);
+
+      expect(serviceOrder.statusValue).toBe(ServiceOrderStatus.IN_EXECUTION);
+      expect(serviceOrder.approvedAmountValue?.value).toBe(89.9);
+      expect(serviceOrder.approvedAtValue).toBeInstanceOf(Date);
+      expect(serviceOrder.historyValue.at(-1)?.statusValue).toBe(
+        ServiceOrderStatus.IN_EXECUTION,
+      );
+      expect(serviceOrder.historyValue.at(-1)?.changedByIdValue).toBeNull();
+    });
+
+    it('grava quem registrou a decisão no histórico', () => {
+      const serviceOrder = awaitingApproval();
+      serviceOrder.approve('admin-1');
+      expect(serviceOrder.historyValue.at(-1)?.changedByIdValue).toBe(
+        'admin-1',
+      );
+    });
+
+    it.each([
+      ServiceOrderStatus.IN_DIAGNOSIS,
+      ServiceOrderStatus.IN_EXECUTION,
+      ServiceOrderStatus.REJECTED,
+      ServiceOrderStatus.FINISHED,
+    ])('recusa aprovar OS em %s', (status) => {
+      expect(() => restoreWithStatus(status).approve(null)).toThrow(
+        codeOf(ServiceOrderErrorCode.NOT_AWAITING_APPROVAL),
+      );
+    });
+  });
+
+  describe('reject', () => {
+    it('encerra a OS como Rejeitada, sem valor aprovado', () => {
+      const serviceOrder = awaitingApproval();
+
+      serviceOrder.reject(null);
+
+      expect(serviceOrder.statusValue).toBe(ServiceOrderStatus.REJECTED);
+      expect(serviceOrder.isClosed).toBeTrue();
+      expect(serviceOrder.approvedAmountValue).toBeNull();
+      expect(serviceOrder.historyValue.at(-1)?.statusValue).toBe(
+        ServiceOrderStatus.REJECTED,
+      );
+    });
+
+    it('recusa rejeitar o que já foi decidido', () => {
+      const serviceOrder = awaitingApproval();
+      serviceOrder.approve(null);
+      expect(() => serviceOrder.reject(null)).toThrow(
+        codeOf(ServiceOrderErrorCode.NOT_AWAITING_APPROVAL),
+      );
+    });
+  });
 });

@@ -3,6 +3,8 @@ import type { AuthPlugin } from '../../../shared/presentation/auth/auth.plugin.j
 import { EmployeeRole } from '../../employee/domain/enums/employee-role.enum.js';
 import type { ServiceOrderUseCases } from '../service-order.container.js';
 import { assignMechanicHandler } from './controllers/assign/assign-mechanic.handler.js';
+import { approveQuoteHandler } from './controllers/decision/approve-quote.handler.js';
+import { rejectQuoteHandler } from './controllers/decision/reject-quote.handler.js';
 import { completeDiagnosisHandler } from './controllers/diagnosis/complete-diagnosis.handler.js';
 import { findServiceOrderByIdHandler } from './controllers/find/by-id/find-service-order-by-id.handler.js';
 import { addProductItemHandler } from './controllers/items/add-product-item.handler.js';
@@ -31,6 +33,8 @@ export const orderRoutes = (useCases: ServiceOrderUseCases, auth: AuthPlugin) =>
 
 // Atribuir é do Atendente; diagnóstico e itens são do mecânico responsável ou do
 // ADMIN — quem confere o "responsável" é a ServiceOrder.assertCanBeWorkedBy().
+// Aprovar/rejeitar aceita o cliente: o guard só exige token, e quem confere o dono
+// da Ordem é a Order.assertQuoteCanBeDecidedBy().
 export const serviceOrderRoutes = (
   useCases: ServiceOrderUseCases,
   auth: AuthPlugin,
@@ -53,4 +57,9 @@ export const serviceOrderRoutes = (
           .use(changeItemQuantityHandler(useCases.changeItemQuantity, auth))
           .use(removeItemHandler(useCases.removeItem, auth))
           .use(completeDiagnosisHandler(useCases.completeDiagnosis, auth)),
+    )
+    .guard({ auth: true, detail: bearer }, (app) =>
+      app
+        .use(approveQuoteHandler(useCases.approveQuote, auth))
+        .use(rejectQuoteHandler(useCases.rejectQuote, auth)),
     );

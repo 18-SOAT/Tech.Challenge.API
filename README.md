@@ -62,6 +62,15 @@ bun test            # unitários + e2e
 bun run test:cov    # cobertura
 ```
 
+Testes de integração (Postgres real, fora do `bun test`): provam a atomicidade da aprovação do orçamento — rollback com saldo insuficiente e decisões concorrentes.
+
+```bash
+docker compose up -d postgres   # ou um Postgres local
+bun run test:integration        # cria o banco mechanic_system_test e aplica as migrations
+```
+
+O banco vem de `TEST_DATABASE_URL` (padrão `postgresql://postgres:postgres@localhost:5432/mechanic_system_test`) e precisa terminar em `_test`: as tabelas são esvaziadas a cada teste, então ele nunca aponta para o banco de desenvolvimento.
+
 ## Qualidade
 
 ```bash

@@ -2,7 +2,7 @@ import { IdGenerator } from '../../../../shared/domain/id-generator.js';
 import { StockMovementType } from '../enums/stock-movement-type.enum.js';
 
 // Lançamento imutável do livro-razão do estoque. Só nasce por um método do
-// Product (receive/adjust; withdraw na #12), que valida a regra antes.
+// Product (receive/adjust/withdraw), que valida a regra antes.
 // `quantity`: IN e OUT guardam unidades positivas; ADJUSTMENT guarda o delta com
 // sinal (-3 = perda de 3). Assim a soma dos `delta` é sempre o saldo.
 export class StockMovement {
@@ -16,7 +16,7 @@ export class StockMovement {
     private readonly createdAt: Date,
   ) {}
 
-  // Não chame direto: use Product.receive()/adjust(), que guardam o saldo.
+  // Não chame direto: use Product.receive()/adjust()/withdraw(), que guardam o saldo.
   static create(input: {
     productId: string;
     type: StockMovementType;
