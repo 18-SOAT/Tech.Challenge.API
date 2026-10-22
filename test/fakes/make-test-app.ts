@@ -34,7 +34,11 @@ import { ApproveQuoteUseCase } from '../../src/modules/service-order/application
 import { AssignMechanicUseCase } from '../../src/modules/service-order/application/use-cases/assign-mechanic.use-case.js';
 import { ChangeItemQuantityUseCase } from '../../src/modules/service-order/application/use-cases/change-item-quantity.use-case.js';
 import { CompleteDiagnosisUseCase } from '../../src/modules/service-order/application/use-cases/complete-diagnosis.use-case.js';
+import { DeliverOrderUseCase } from '../../src/modules/service-order/application/use-cases/deliver-order.use-case.js';
+import { FindMyOrderUseCase } from '../../src/modules/service-order/application/use-cases/find-my-order.use-case.js';
 import { FindServiceOrderByIdUseCase } from '../../src/modules/service-order/application/use-cases/find-service-order-by-id.use-case.js';
+import { FinishServiceOrderUseCase } from '../../src/modules/service-order/application/use-cases/finish-service-order.use-case.js';
+import { ListMyOrdersUseCase } from '../../src/modules/service-order/application/use-cases/list-my-orders.use-case.js';
 import { OpenAdditionalServiceOrderUseCase } from '../../src/modules/service-order/application/use-cases/open-additional-service-order.use-case.js';
 import { OpenOrderUseCase } from '../../src/modules/service-order/application/use-cases/open-order.use-case.js';
 import { RejectQuoteUseCase } from '../../src/modules/service-order/application/use-cases/reject-quote.use-case.js';
@@ -56,6 +60,7 @@ import { InMemoryCustomerRegistrationRepository } from './in-memory-customer-reg
 import { InMemoryEmployeeRepository } from './in-memory-employee.repository.js';
 import { InMemoryEmployeeRegistrationRepository } from './in-memory-employee-registration.repository.js';
 import { InMemoryOrderRepository } from './in-memory-order.repository.js';
+import { InMemoryOrderDeliveryRepository } from './in-memory-order-delivery.repository.js';
 import { InMemoryOrderOpeningRepository } from './in-memory-order-opening.repository.js';
 import { InMemoryProductRepository } from './in-memory-product.repository.js';
 import { InMemoryServiceRepository } from './in-memory-service.repository.js';
@@ -198,6 +203,20 @@ export function makeTestApp() {
         approval,
       ),
       rejectQuote: new RejectQuoteUseCase(serviceOrders, orders, approval),
+      finishServiceOrder: new FinishServiceOrderUseCase(serviceOrders),
+      deliverOrder: new DeliverOrderUseCase(
+        orders,
+        serviceOrders,
+        new InMemoryOrderDeliveryRepository(orders, serviceOrders),
+      ),
+      listMyOrders: new ListMyOrdersUseCase(orders, serviceOrders, vehicles),
+      findMyOrder: new FindMyOrderUseCase(
+        orders,
+        serviceOrders,
+        vehicles,
+        services,
+        products,
+      ),
     },
   });
 

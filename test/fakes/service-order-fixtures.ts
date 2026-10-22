@@ -9,6 +9,7 @@ import { FakeServiceOrderMailer } from './fake-service-order.mailer.js';
 import { InMemoryCustomerRepository } from './in-memory-customer.repository.js';
 import { InMemoryEmployeeRepository } from './in-memory-employee.repository.js';
 import { InMemoryOrderRepository } from './in-memory-order.repository.js';
+import { InMemoryOrderDeliveryRepository } from './in-memory-order-delivery.repository.js';
 import { InMemoryOrderOpeningRepository } from './in-memory-order-opening.repository.js';
 import { InMemoryProductRepository } from './in-memory-product.repository.js';
 import { InMemoryServiceRepository } from './in-memory-service.repository.js';
@@ -111,5 +112,6 @@ export function makeServiceOrderWorld() {
     mailer,
     stockMovements,
     approval,
+    delivery: new InMemoryOrderDeliveryRepository(orders, serviceOrders),
   };
 }

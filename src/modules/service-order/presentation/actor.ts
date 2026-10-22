@@ -18,3 +18,9 @@ export function toQuoteDecider(user: AuthTokenPayload): QuoteDecider {
     ? { customerId: user.customerId }
     : { employeeId: user.employeeId, role: user.role };
 }
+
+// Rotas /me: só o cliente tem "minhas ordens"; o funcionário recebe 403.
+export function toCustomerId(user: AuthTokenPayload): string {
+  if (user.type !== UserType.CUSTOMER) throw AuthError.forbidden();
+  return user.customerId;
+}

@@ -15,11 +15,16 @@ import { ApproveQuoteUseCase } from './application/use-cases/approve-quote.use-c
 import { AssignMechanicUseCase } from './application/use-cases/assign-mechanic.use-case.js';
 import { ChangeItemQuantityUseCase } from './application/use-cases/change-item-quantity.use-case.js';
 import { CompleteDiagnosisUseCase } from './application/use-cases/complete-diagnosis.use-case.js';
+import { DeliverOrderUseCase } from './application/use-cases/deliver-order.use-case.js';
+import { FindMyOrderUseCase } from './application/use-cases/find-my-order.use-case.js';
 import { FindServiceOrderByIdUseCase } from './application/use-cases/find-service-order-by-id.use-case.js';
+import { FinishServiceOrderUseCase } from './application/use-cases/finish-service-order.use-case.js';
+import { ListMyOrdersUseCase } from './application/use-cases/list-my-orders.use-case.js';
 import { OpenAdditionalServiceOrderUseCase } from './application/use-cases/open-additional-service-order.use-case.js';
 import { OpenOrderUseCase } from './application/use-cases/open-order.use-case.js';
 import { RejectQuoteUseCase } from './application/use-cases/reject-quote.use-case.js';
 import { RemoveItemUseCase } from './application/use-cases/remove-item.use-case.js';
+import type { OrderDeliveryRepository } from './domain/ports/order-delivery.repository.js';
 import type { OrderOpeningRepository } from './domain/ports/order-opening.repository.js';
 import type { ServiceOrderMailer } from './domain/ports/service-order.mailer.js';
 import type { ServiceOrderApprovalRepository } from './domain/ports/service-order-approval.repository.js';
@@ -27,6 +32,7 @@ import type { OrderRepository } from './domain/repositories/order.repository.js'
 import type { ServiceOrderRepository } from './domain/repositories/service-order.repository.js';
 import { ServiceOrderEmailMailer } from './infrastructure/mailers/service-order.mailer.js';
 import { PrismaOrderRepository } from './infrastructure/persistence/prisma-order.repository.js';
+import { PrismaOrderDeliveryRepository } from './infrastructure/persistence/prisma-order-delivery.repository.js';
 import { PrismaOrderOpeningRepository } from './infrastructure/persistence/prisma-order-opening.repository.js';
 import { PrismaServiceOrderRepository } from './infrastructure/persistence/prisma-service-order.repository.js';
 import { PrismaServiceOrderApprovalRepository } from './infrastructure/persistence/prisma-service-order-approval.repository.js';
@@ -53,6 +59,9 @@ export function makeServiceOrderContainer(shared: SharedContainer) {
   const serviceOrders: ServiceOrderRepository =
     new PrismaServiceOrderRepository(shared.prisma);
   const orderOpening: OrderOpeningRepository = new PrismaOrderOpeningRepository(
+    shared.prisma,
+  );
+  const delivery: OrderDeliveryRepository = new PrismaOrderDeliveryRepository(
     shared.prisma,
   );
   const approval: ServiceOrderApprovalRepository =
@@ -94,6 +103,16 @@ export function makeServiceOrderContainer(shared: SharedContainer) {
       approval,
     ),
     rejectQuote: new RejectQuoteUseCase(serviceOrders, orders, approval),
+    finishServiceOrder: new FinishServiceOrderUseCase(serviceOrders),
+    deliverOrder: new DeliverOrderUseCase(orders, serviceOrders, delivery),
+    listMyOrders: new ListMyOrdersUseCase(orders, serviceOrders, vehicles),
+    findMyOrder: new FindMyOrderUseCase(
+      orders,
+      serviceOrders,
+      vehicles,
+      services,
+      products,
+    ),
   };
 }
 

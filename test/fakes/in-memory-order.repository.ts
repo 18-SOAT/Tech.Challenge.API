@@ -22,6 +22,13 @@ export class InMemoryOrderRepository implements OrderRepository {
     return stored ? cloneOrder(stored) : null;
   }
 
+  async findByCustomer(customerId: string): Promise<Order[]> {
+    return this.items
+      .filter((order) => order.customerIdValue === customerId)
+      .reverse()
+      .map(cloneOrder);
+  }
+
   async hasOpenForVehicle(vehicleId: string): Promise<boolean> {
     return this.items.some(
       (order) => order.vehicleIdValue === vehicleId && !order.isDelivered,

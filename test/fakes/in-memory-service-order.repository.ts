@@ -56,11 +56,23 @@ export class InMemoryServiceOrderRepository implements ServiceOrderRepository {
     return stored ? cloneServiceOrder(stored) : null;
   }
 
+  async findByOrderId(orderId: string): Promise<ServiceOrder[]> {
+    return this.items
+      .filter((item) => item.orderIdValue === orderId)
+      .map(cloneServiceOrder);
+  }
+
+  // Lock otimista como o adapter: o status gravado precisa ser o que a entity leu.
   async save(serviceOrder: ServiceOrder): Promise<void> {
     const index = this.items.findIndex(
       (item) => item.idValue === serviceOrder.idValue,
     );
-    if (index < 0) throw ServiceOrderError.notFound();
+    const stored = this.items[index];
+    if (!stored) throw ServiceOrderError.notFound();
+    const loaded = serviceOrder.loadedStatusValue;
+    if (loaded && stored.statusValue !== loaded) {
+      throw ServiceOrderError.concurrentUpdate();
+    }
     this.items[index] = cloneServiceOrder(serviceOrder);
   }
 }

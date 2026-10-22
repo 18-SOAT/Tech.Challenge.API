@@ -16,6 +16,7 @@ export class OrderResponseDto {
     readonly status: OrderStatus,
     readonly notes: string | null,
     readonly receivedAt: string,
+    readonly deliveredAt: string | null,
   ) {}
 
   static fromEntity(order: Order): OrderResponseDto {
@@ -27,6 +28,7 @@ export class OrderResponseDto {
       order.statusValue,
       order.notesValue,
       order.receivedAtValue.toISOString(),
+      order.deliveredAtValue?.toISOString() ?? null,
     );
   }
 }
@@ -42,6 +44,7 @@ export const OrderResponseSchema = t.Object(
     status: t.Enum(OrderStatus),
     notes: t.Nullable(t.String()),
     receivedAt: t.String({ format: 'date-time' }),
+    deliveredAt: t.Nullable(t.String({ format: 'date-time' })),
   },
   { title: 'Order' },
 );
