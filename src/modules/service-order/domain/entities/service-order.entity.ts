@@ -15,7 +15,7 @@ export interface ServiceOrderActor {
   role: EmployeeRole;
 }
 
-const TERMINAL_STATUSES: readonly ServiceOrderStatus[] = [
+export const TERMINAL_STATUSES: readonly ServiceOrderStatus[] = [
   ServiceOrderStatus.FINISHED,
   ServiceOrderStatus.REJECTED,
 ];
@@ -36,6 +36,10 @@ export class ServiceOrder {
     private readonly services: ServiceItem[],
     private readonly products: ProductItem[],
     private readonly history: ServiceOrderStatusHistory[],
+    // Status com que o agregado foi lido do banco (null = ainda não gravado). O
+    // save() só grava se o banco continua nesse status: lock otimista, que barra
+    // duas transições simultâneas (ex: finalizar duas vezes) sem travar a linha.
+    private readonly loadedStatus: ServiceOrderStatus | null,
   ) {}
 
   // "OS criada" (Em diagnóstico): a primeira da Ordem ou um reparo adicional.
@@ -61,6 +65,7 @@ export class ServiceOrder {
           changedById: input.createdById,
         }),
       ],
+      null,
     );
   }
 
@@ -91,6 +96,7 @@ export class ServiceOrder {
       [...props.services],
       [...props.products],
       [...props.history],
+      props.status,
     );
   }
 
@@ -209,6 +215,14 @@ export class ServiceOrder {
     this.transitionTo(ServiceOrderStatus.REJECTED, changedById);
   }
 
+  // "OS finalizada": fecha o tempo de execução (o histórico guarda o instante).
+  finish(changedById: string): void {
+    if (this.status !== ServiceOrderStatus.IN_EXECUTION) {
+      throw ServiceOrderError.notInExecution();
+    }
+    this.transitionTo(ServiceOrderStatus.FINISHED, changedById);
+  }
+
   private transitionTo(
     status: ServiceOrderStatus,
     changedById: string | null,
@@ -265,6 +279,10 @@ export class ServiceOrder {
 
   get idValue(): string {
     return this.id;
+  }
+
+  get loadedStatusValue(): ServiceOrderStatus | null {
+    return this.loadedStatus;
   }
 
   get orderIdValue(): string {
