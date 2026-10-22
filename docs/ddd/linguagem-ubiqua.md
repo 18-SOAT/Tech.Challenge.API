@@ -83,6 +83,7 @@ Os contextos se referenciam **só por ID**. Uma OS guarda `productId` e `service
 | Reparo adicional | nova `ServiceOrder` na mesma `Order` | Problema achado durante a estadia. Gera uma OS nova, com orçamento próprio, sem alterar a já aprovada. |
 | Histórico de status | `ServiceOrderStatusHistory` | Uma linha por transição (append-only), com quem mudou (`changedById`; `null` = cliente/sistema) e quando. Fonte do tempo médio de execução. |
 | Status terminal | `FINISHED` ou `REJECTED` | OS que não muda mais. A Ordem só é entregue quando todas as OS estão terminais. |
+| Andamento | read model (`OrderProgress`, `ProgressStage`) | O que o cliente acompanha: os status do enunciado calculados a partir da Ordem e das OS (ver [Andamento](#andamento-o-que-o-cliente-vê)). Não é gravado. |
 
 ## Status
 
@@ -101,7 +102,23 @@ O enunciado descreve um fluxo único de status. No modelo, ele se divide entre a
 Transições permitidas:
 
 - **OS:** `IN_DIAGNOSIS → AWAITING_APPROVAL → IN_EXECUTION → FINISHED`, e `AWAITING_APPROVAL → REJECTED`.
-- **Ordem:** `RECEIVED → IN_PROGRESS` (na primeira OS aprovada) `→ DELIVERED` (só com todas as OS terminais).
+- **Ordem:** `RECEIVED → IN_PROGRESS` (na primeira OS aprovada) `→ DELIVERED` (só com todas as OS terminais). Se o cliente rejeitou todos os orçamentos, `RECEIVED → DELIVERED`: nada foi executado e o veículo volta para ele.
+
+### Andamento: o que o cliente vê
+
+O cliente não enxerga os dois agregados: ele acompanha **os status do enunciado**, calculados por `OrderProgress` (função pura do domínio) a cada consulta.
+
+| Estágio (`ProgressStage`) | De uma OS | Da Ordem |
+|---|---|---|
+| Recebida | em diagnóstico **sem mecânico atribuído** | a OS mais urgente está Recebida (ou a Ordem não tem OS) |
+| Em diagnóstico | em diagnóstico com mecânico | a OS mais urgente está Em diagnóstico |
+| Aguardando aprovação | `AWAITING_APPROVAL` | alguma OS aguarda o cliente |
+| Em execução | `IN_EXECUTION` | alguma OS em execução (e nenhuma aguardando aprovação) |
+| Finalizada | `FINISHED` | todas as OS encerradas (finalizadas ou rejeitadas): o veículo aguarda a retirada |
+| Entregue | — | `OrderStatus.DELIVERED` |
+| Orçamento rejeitado | `REJECTED` | — |
+
+Com várias OS, a Ordem mostra a fase **mais urgente**, nesta ordem: Aguardando aprovação (depende do cliente) → Em execução → Em diagnóstico → Recebida. "Recebida" ganha sentido próprio pela atribuição do mecânico: sem essa regra ela seria instantânea, porque a OS já nasce em diagnóstico.
 
 ### Por que dois agregados com status
 
@@ -122,8 +139,8 @@ Com um status só, um reparo adicional obrigaria a voltar uma OS "Em execução"
 | `Vehicle` | — | `LicensePlate` | Placa válida e única (pode ser corrigida ou convertida para Mercosul); pertence a um cliente (por ID), que não muda; ano entre 1900 e o ano seguinte ao atual; não é excluído se tiver OS. |
 | `Service` | — | `Money` | Nome único no catálogo (sem diferenciar maiúscula); preço ≥ 0 com até 2 casas; duração estimada, se informada, em minutos > 0; inativo não entra em orçamento novo; não é excluído se já entrou em OS (desativa-se). |
 | `Product` | `StockMovement` | `Money` | Saldo nunca negativo; todo saldo muda por movimentação. |
-| `Order` | — | — | Um veículo só tem uma Ordem aberta por vez (checada no use case e, na corrida, no adapter com o veículo travado); o veículo é do cliente informado; reparo adicional só antes da entrega; o orçamento de uma OS da Ordem só é aprovado ou rejeitado pelo cliente dela ou por um ADMIN (`Order.assertQuoteCanBeDecidedBy()`); entrega só com todas as OS terminais (regra validada em `Order.deliver(...)` com os status recebidos do use case). |
-| `ServiceOrder` | `ServiceItem`, `ProductItem`, `ServiceOrderStatusHistory` | `Money` | Transições só pelo fluxo acima; responsável é MECHANIC, e só ele (ou um ADMIN) trabalha na OS; itens só antes do orçamento, com quantidade inteira > 0 e catálogo ativo; orçamento exige responsável e ao menos um item; só o orçamento `AWAITING_APPROVAL` é aprovado ou rejeitado; aprovação congela o valor; toda transição grava histórico (cliente fica como autor `null`). |
+| `Order` | — | — | Um veículo só tem uma Ordem aberta por vez (checada no use case e, na corrida, no adapter com o veículo travado); o veículo é do cliente informado; reparo adicional só antes da entrega; o orçamento de uma OS da Ordem só é aprovado ou rejeitado pelo cliente dela ou por um ADMIN (`Order.assertQuoteCanBeDecidedBy()`); entrega só com todas as OS terminais (regra validada em `Order.deliver(...)` com os status recebidos do use case e reconferida no adapter com a Ordem travada — o reparo adicional trava a mesma linha); o cliente só consulta as próprias Ordens (`Order.belongsTo()`; a de outro cliente responde 404). |
+| `ServiceOrder` | `ServiceItem`, `ProductItem`, `ServiceOrderStatusHistory` | `Money` | Transições só pelo fluxo acima; responsável é MECHANIC, e só ele (ou um ADMIN) trabalha na OS; itens só antes do orçamento, com quantidade inteira > 0 e catálogo ativo; orçamento exige responsável e ao menos um item; só o orçamento `AWAITING_APPROVAL` é aprovado ou rejeitado; aprovação congela o valor; só a OS em execução é finalizada; toda transição grava histórico (cliente fica como autor `null`); lock otimista: a gravação só passa se o status no banco ainda é o lido (`loadedStatus`), senão 409. |
 
 `Order` e `ServiceOrder` são agregados **separados**. A OS referencia a Ordem pelo `orderId`. A regra que cruza os dois (entrega) fica no use case de entrega, que carrega as OS da Ordem e passa os status para a `Order` validar.
 
@@ -268,7 +285,7 @@ Legenda: *Comando*, `Evento`, ⟶ política. A notação visual está em [event-
 | Mecânico | *Finalizar OS* | `ServiceOrder` | `OS finalizada` | Fecha o tempo de execução (histórico) |
 | Atendente | *Abrir reparo adicional* | `ServiceOrder` | `OS criada` | Nova OS na mesma Ordem, com orçamento próprio |
 | Atendente | *Entregar veículo* | `Order` | `Ordem entregue` | Só se todas as OS estiverem terminais |
-| Cliente | *Consultar andamento* | read model | — | Status atual + histórico das OS da Ordem (cliente autenticado) |
+| Cliente | *Consultar andamento* | read model | — | Status do enunciado da Ordem e de cada OS (`OrderProgress`), com itens, orçamento e histórico (cliente autenticado, só as próprias Ordens) |
 | — | — | `ServiceOrder` | (qualquer transição) | ⟶ toda transição grava uma linha em `ServiceOrderStatusHistory` |
 
 ### 3. Gestão de peças e insumos
@@ -323,7 +340,9 @@ Cada elemento do modelo e o arquivo onde ele vive.
 | `ServiceOrder` | Entidade (raiz) | `src/modules/service-order/domain/entities/service-order.entity.ts` |
 | `ServiceItem`, `ProductItem` | Entidades | `src/modules/service-order/domain/entities/service-item.entity.ts`, `product-item.entity.ts` |
 | `ServiceOrderStatusHistory` | Entidade | `src/modules/service-order/domain/entities/service-order-status-history.entity.ts` |
-| `OrderStatus`, `ServiceOrderStatus` | Enums | `src/modules/service-order/domain/enums/` |
+| `OrderStatus`, `ServiceOrderStatus`, `ProgressStage` | Enums | `src/modules/service-order/domain/enums/` |
+| Andamento (status do enunciado) | Domain service | `src/modules/service-order/domain/services/order-progress.ts` |
+| Entrega atômica (Ordem travada + recontagem das OS) | Port + adapter | `src/modules/service-order/domain/ports/order-delivery.repository.ts`, `src/modules/service-order/infrastructure/persistence/prisma-order-delivery.repository.ts` |
 | Abertura atômica (Order + 1ª ServiceOrder + histórico) | Port + adapter | `src/modules/service-order/domain/ports/order-opening.repository.ts` |
 | Persistência do agregado OS (itens sincronizados + histórico append-only) | Repository | `src/modules/service-order/domain/repositories/service-order.repository.ts` |
 | Decisão atômica do orçamento (aprovar + baixar estoque + iniciar ordem + histórico; rejeitar) | Port + adapter | `src/modules/service-order/domain/ports/service-order-approval.repository.ts`, `src/modules/service-order/infrastructure/persistence/prisma-service-order-approval.repository.ts` |
@@ -335,7 +354,8 @@ Cada elemento do modelo e o arquivo onde ele vive.
 | E-mails do link de acesso | Port + Mailer | `src/modules/auth/domain/ports/access-link.mailer.ts`, `src/modules/auth/infrastructure/mailers/auth.mailer.ts` |
 | Primeiro acesso, redefinição, definir senha | Use cases | `src/modules/auth/application/use-cases/request-first-access.use-case.ts`, `request-password-reset.use-case.ts`, `set-password.use-case.ts` |
 | Cadastrar funcionário, alterar papel | Use cases | `src/modules/employee/application/use-cases/create-employee.use-case.ts`, `change-employee-role.use-case.ts` |
-| Abrir ordem, reparo adicional, atribuir mecânico, incluir/alterar/remover item, concluir diagnóstico, detalhe da OS, aprovar/rejeitar orçamento | Use cases | `src/modules/service-order/application/use-cases/` (`open-order`, `open-additional-service-order`, `assign-mechanic`, `add-service-item`, `add-product-item`, `change-item-quantity`, `remove-item`, `complete-diagnosis`, `find-service-order-by-id`, `approve-quote`, `reject-quote`) |
+| Abrir ordem, reparo adicional, atribuir mecânico, incluir/alterar/remover item, concluir diagnóstico, detalhe da OS, aprovar/rejeitar orçamento | Use cases | `src/modules/service-order/application/use-cases/` (`open-order`, `open-additional-service-order`, `assign-mechanic`, `add-service-item`, `add-product-item`, `change-item-quantity`, `remove-item`, `complete-diagnosis`, `find-service-order-by-id`, `approve-quote`, `reject-quote`, `finish-service-order`, `deliver-order`) |
+| Consultar andamento (cliente) | Use cases + rotas `/me` | `src/modules/service-order/application/use-cases/list-my-orders.use-case.ts`, `find-my-order.use-case.ts`; `src/modules/service-order/presentation/controllers/me/` |
 | E-mail do orçamento | Port + Mailer | `src/modules/service-order/domain/ports/service-order.mailer.ts`, `src/modules/service-order/infrastructure/mailers/service-order.mailer.ts` |
 | Envio de e-mail (link de acesso, orçamento) | Port + adapter (SMTP) | `src/shared/infrastructure/email/email-sender.port.ts` |
 | Erros de domínio | Catálogos por contexto | `src/modules/*/domain/errors/*.error.ts` |
