@@ -75,6 +75,12 @@ Os fluxos atômicos do projeto são poucos (cadastro, aprovação de orçamento,
 - **Erro do Prisma não sai da infrastructure**: `P2002` e afins viram `DomainError` (ver [Erros de unicidade do banco](#erros-de-unicidade-do-banco)).
 - **O fake in-memory também é atômico**: valida tudo antes de mutar qualquer coleção, para que o teste unitário do use case enxergue o mesmo comportamento de "tudo ou nada".
 
+### Lock otimista pelo status
+
+O `ServiceOrderRepository.save()` grava o agregado inteiro, então duas requisições que carregam a mesma OS e fazem a mesma transição (ex: finalizar duas vezes) passariam as duas. A `ServiceOrder` guarda o status com que foi lida (`loadedStatus`, `null` se ainda não foi gravada), e o `save()` só atualiza `WHERE status = loadedStatus`. Com `count === 0`, o adapter distingue OS inexistente (404) de alteração concorrente (`ServiceOrderError.concurrentUpdate`, 409).
+
+É otimista porque não trava nada durante o use case: o conflito é raro, e quando acontece a segunda requisição simplesmente recebe 409. Quando a regra envolve **outra** tabela (a entrega depende das OS da Ordem), o update condicional não basta e o adapter trava a linha com `SELECT … FOR UPDATE` (ver `PrismaOrderDeliveryRepository` e o `create()` do reparo adicional, que travam a mesma Ordem).
+
 ### Lote ou interativa
 
 | Forma | Quando usar | Exemplo |

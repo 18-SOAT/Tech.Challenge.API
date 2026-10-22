@@ -1,8 +1,12 @@
 import { IdGenerator } from '../../../../shared/domain/id-generator.js';
 import { EmployeeRole } from '../../../employee/domain/enums/employee-role.enum.js';
 import { OrderStatus } from '../enums/order-status.enum.js';
+import type { ServiceOrderStatus } from '../enums/service-order-status.enum.js';
 import { OrderError } from '../errors/order.error.js';
-import type { ServiceOrderActor } from './service-order.entity.js';
+import {
+  type ServiceOrderActor,
+  TERMINAL_STATUSES,
+} from './service-order.entity.js';
 
 // Quem aprova ou rejeita um orçamento, como vem das claims do token: o cliente
 // (pelo customerId) ou um funcionário.
@@ -86,6 +90,24 @@ export class Order {
   start(): void {
     if (this.isDelivered) throw OrderError.alreadyDelivered();
     this.status = OrderStatus.IN_PROGRESS;
+  }
+
+  // "Ordem entregue": o veículo sai, e só sai com todo trabalho encerrado (OS
+  // finalizadas ou rejeitadas). Os status vêm do use case, que enxerga o outro
+  // agregado; a regra fica aqui. Se o cliente rejeitou tudo, a Ordem vai de
+  // Recebida direto para Entregue.
+  deliver(serviceOrderStatuses: readonly ServiceOrderStatus[]): void {
+    if (this.isDelivered) throw OrderError.alreadyDelivered();
+    if (!serviceOrderStatuses.every((s) => TERMINAL_STATUSES.includes(s))) {
+      throw OrderError.hasOpenServiceOrders();
+    }
+    this.status = OrderStatus.DELIVERED;
+    this.deliveredAt = new Date();
+  }
+
+  // Consulta do cliente: só a própria Ordem.
+  belongsTo(customerId: string): boolean {
+    return this.customerId === customerId;
   }
 
   get isDelivered(): boolean {

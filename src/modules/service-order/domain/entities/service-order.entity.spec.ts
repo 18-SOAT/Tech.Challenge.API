@@ -408,6 +408,44 @@ describe('ServiceOrder', () => {
     });
   });
 
+  describe('finish', () => {
+    it('finaliza a OS em execução, com quem finalizou no histórico', () => {
+      const serviceOrder = awaitingApproval();
+      serviceOrder.approve(null);
+
+      serviceOrder.finish(MECHANIC.id);
+
+      expect(serviceOrder.statusValue).toBe(ServiceOrderStatus.FINISHED);
+      expect(serviceOrder.isClosed).toBeTrue();
+      expect(serviceOrder.historyValue.at(-1)?.statusValue).toBe(
+        ServiceOrderStatus.FINISHED,
+      );
+      expect(serviceOrder.historyValue.at(-1)?.changedByIdValue).toBe(
+        MECHANIC.id,
+      );
+    });
+
+    it.each([
+      ServiceOrderStatus.IN_DIAGNOSIS,
+      ServiceOrderStatus.AWAITING_APPROVAL,
+      ServiceOrderStatus.FINISHED,
+      ServiceOrderStatus.REJECTED,
+    ])('recusa finalizar OS em %s', (status) => {
+      expect(() => restoreWithStatus(status).finish(MECHANIC.id)).toThrow(
+        codeOf(ServiceOrderErrorCode.NOT_IN_EXECUTION),
+      );
+    });
+  });
+
+  describe('loadedStatus (lock otimista)', () => {
+    it('OS nova não foi lida do banco; a restaurada guarda o status lido', () => {
+      expect(create().loadedStatusValue).toBeNull();
+      const restored = restoreWithStatus(ServiceOrderStatus.IN_EXECUTION);
+      restored.finish(MECHANIC.id);
+      expect(restored.loadedStatusValue).toBe(ServiceOrderStatus.IN_EXECUTION);
+    });
+  });
+
   describe('reject', () => {
     it('encerra a OS como Rejeitada, sem valor aprovado', () => {
       const serviceOrder = awaitingApproval();

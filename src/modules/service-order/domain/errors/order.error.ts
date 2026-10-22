@@ -6,6 +6,7 @@ export enum OrderErrorCode {
   VEHICLE_HAS_OPEN_ORDER = 'ORDER_VEHICLE_HAS_OPEN_ORDER',
   VEHICLE_NOT_OWNED_BY_CUSTOMER = 'ORDER_VEHICLE_NOT_OWNED_BY_CUSTOMER',
   QUOTE_DECISION_FORBIDDEN = 'ORDER_QUOTE_DECISION_FORBIDDEN',
+  HAS_OPEN_SERVICE_ORDERS = 'ORDER_HAS_OPEN_SERVICE_ORDERS',
 }
 
 export class OrderError extends DomainError {
@@ -38,6 +39,13 @@ export class OrderError extends DomainError {
     return new OrderError(
       OrderErrorCode.VEHICLE_NOT_OWNED_BY_CUSTOMER,
       'O veículo informado não pertence a esse cliente.',
+    );
+  }
+
+  static hasOpenServiceOrders(): OrderError {
+    return new OrderError(
+      OrderErrorCode.HAS_OPEN_SERVICE_ORDERS,
+      'O veículo só é entregue com todas as OS finalizadas ou rejeitadas.',
     );
   }
 

@@ -61,6 +61,7 @@ export const STATUS_MAP: Record<string, number> = {
   [OrderErrorCode.VEHICLE_HAS_OPEN_ORDER]: 409,
   [OrderErrorCode.VEHICLE_NOT_OWNED_BY_CUSTOMER]: 422,
   [OrderErrorCode.QUOTE_DECISION_FORBIDDEN]: 403,
+  [OrderErrorCode.HAS_OPEN_SERVICE_ORDERS]: 409,
   [ServiceOrderErrorCode.NOT_FOUND]: 404,
   [ServiceOrderErrorCode.NOT_IN_DIAGNOSIS]: 409,
   [ServiceOrderErrorCode.ALREADY_CLOSED]: 409,
@@ -72,6 +73,8 @@ export const STATUS_MAP: Record<string, number> = {
   [ServiceOrderErrorCode.EMPTY_QUOTE]: 409,
   [ServiceOrderErrorCode.NOT_ASSIGNED_TO_YOU]: 403,
   [ServiceOrderErrorCode.NOT_AWAITING_APPROVAL]: 409,
+  [ServiceOrderErrorCode.NOT_IN_EXECUTION]: 409,
+  [ServiceOrderErrorCode.CONCURRENT_UPDATE]: 409,
   [SharedErrorCode.INVALID_EMAIL]: 400,
   [SharedErrorCode.INVALID_MONEY]: 400,
 };

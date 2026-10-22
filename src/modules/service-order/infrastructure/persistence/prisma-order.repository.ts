@@ -12,6 +12,14 @@ export class PrismaOrderRepository implements OrderRepository {
     return record ? OrderMapper.toEntity(record) : null;
   }
 
+  async findByCustomer(customerId: string): Promise<Order[]> {
+    const records = await this.prisma.order.findMany({
+      where: { customerId },
+      orderBy: [{ receivedAt: 'desc' }, { id: 'desc' }],
+    });
+    return records.map(OrderMapper.toEntity);
+  }
+
   async hasOpenForVehicle(vehicleId: string): Promise<boolean> {
     const count = await this.prisma.order.count({
       where: { vehicleId, status: { not: OrderStatus.DELIVERED } },

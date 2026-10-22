@@ -13,6 +13,7 @@ import {
   serviceRoutes,
 } from './modules/inventory/presentation/index.js';
 import {
+  meRoutes,
   orderRoutes,
   serviceOrderRoutes,
 } from './modules/service-order/presentation/index.js';
@@ -115,7 +116,8 @@ export function createApp(deps: AppDeps) {
     .use(serviceRoutes(deps.inventory, auth))
     .use(productRoutes(deps.inventory, auth))
     .use(orderRoutes(deps.serviceOrders, auth))
-    .use(serviceOrderRoutes(deps.serviceOrders, auth));
+    .use(serviceOrderRoutes(deps.serviceOrders, auth))
+    .use(meRoutes(deps.serviceOrders, auth));
 }
 
 export type App = ReturnType<typeof createApp>;

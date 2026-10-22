@@ -126,6 +126,7 @@ describe('Service Orders (e2e)', () => {
         path: `/service-orders/${UNKNOWN_ID}/assignee`,
         body: { mechanicId: MECHANIC_ID },
       },
+      { method: 'POST', path: `/orders/${UNKNOWN_ID}/deliver` },
     ];
     const teamRoutes = [
       { method: 'GET', path: `/service-orders/${UNKNOWN_ID}` },
@@ -152,6 +153,7 @@ describe('Service Orders (e2e)', () => {
         method: 'POST',
         path: `/service-orders/${UNKNOWN_ID}/complete-diagnosis`,
       },
+      { method: 'POST', path: `/service-orders/${UNKNOWN_ID}/finish` },
     ];
 
     const decisionRoutes = [
@@ -159,13 +161,20 @@ describe('Service Orders (e2e)', () => {
       { method: 'POST', path: `/service-orders/${UNKNOWN_ID}/reject` },
     ];
 
-    it.each([...adminRoutes, ...teamRoutes, ...decisionRoutes])(
-      '401: $method $path sem token',
-      async (route) => {
-        const response = await call(route.path, { ...route, token: null });
-        expect(response.status).toBe(401);
-      },
-    );
+    const customerRoutes = [
+      { method: 'GET', path: '/me/orders' },
+      { method: 'GET', path: `/me/orders/${UNKNOWN_ID}` },
+    ];
+
+    it.each([
+      ...adminRoutes,
+      ...teamRoutes,
+      ...decisionRoutes,
+      ...customerRoutes,
+    ])('401: $method $path sem token', async (route) => {
+      const response = await call(route.path, { ...route, token: null });
+      expect(response.status).toBe(401);
+    });
 
     it.each([...adminRoutes, ...teamRoutes])(
       '403: $method $path com token de CUSTOMER',
@@ -188,6 +197,14 @@ describe('Service Orders (e2e)', () => {
       });
       expect(response.status).toBe(403);
     });
+
+    it.each(customerRoutes)(
+      '403: $method $path com token de funcionário',
+      async (route) => {
+        const response = await call(route.path, route);
+        expect(response.status).toBe(403);
+      },
+    );
 
     it('403: outro mecânico não mexe na OS atribuída', async () => {
       const { serviceOrderId } = await openAssigned();
@@ -418,6 +435,120 @@ describe('Service Orders (e2e)', () => {
         method: 'POST',
       });
       expect(missing.status).toBe(404);
+    });
+  });
+
+  describe('acompanhamento da OS', () => {
+    it('aprovada, finalizada e entregue, com o cliente acompanhando cada fase', async () => {
+      const { orderId, serviceOrderId } = await openQuote();
+      const token = await customerToken();
+      const progress = async () =>
+        (await readEnvelope(await call(`/me/orders/${orderId}`, { token })))
+          .data;
+
+      // 1. O cliente vê o orçamento, com nome e preço de cada item.
+      const quote = await progress();
+      expect(quote).toMatchObject({
+        id: orderId,
+        number: 1,
+        status: 'AWAITING_APPROVAL',
+        statusLabel: 'Aguardando aprovação',
+        deliveredAt: null,
+        vehicle: { plate: 'ABC1D23', brand: 'Fiat', model: 'Uno', year: 2015 },
+      });
+      expect(quote.serviceOrders[0].items).toEqual([
+        { name: 'Troca de óleo', quantity: 1, unitPrice: 89.9, subtotal: 89.9 },
+        { name: 'Filtro de óleo', quantity: 2, unitPrice: 35.5, subtotal: 71 },
+      ]);
+      expect(quote.serviceOrders[0].history[0]).not.toHaveProperty(
+        'changedById',
+      );
+
+      // 2. Aprova; o mecânico executa e finaliza.
+      await call(`/service-orders/${serviceOrderId}/approve`, {
+        method: 'POST',
+        token,
+      });
+      expect((await progress()).statusLabel).toBe('Em execução');
+      const finished = await call(`/service-orders/${serviceOrderId}/finish`, {
+        method: 'POST',
+        token: mechanicToken,
+      });
+      expect(finished.status).toBe(200);
+      expect((await readEnvelope(finished)).data.status).toBe('FINISHED');
+      expect((await progress()).statusLabel).toBe('Finalizada');
+
+      // 3. O atendente entrega o veículo.
+      const delivered = await call(`/orders/${orderId}/deliver`, {
+        method: 'POST',
+      });
+      expect(delivered.status).toBe(200);
+      const { data } = await readEnvelope(delivered);
+      expect(data.status).toBe('DELIVERED');
+      expect(data.deliveredAt).toBeString();
+
+      const final = await progress();
+      expect(final).toMatchObject({
+        status: 'DELIVERED',
+        statusLabel: 'Entregue',
+      });
+      expect(
+        final.serviceOrders[0].history.map(
+          (row: { statusLabel: string }) => row.statusLabel,
+        ),
+      ).toEqual([
+        'Em diagnóstico',
+        'Aguardando aprovação',
+        'Em execução',
+        'Finalizada',
+      ]);
+
+      // 4. A lista do cliente mostra a ordem entregue, sem os itens.
+      const list = await readEnvelope(await call('/me/orders', { token }));
+      expect(list.data).toHaveLength(1);
+      expect(list.data[0].statusLabel).toBe('Entregue');
+      expect(list.data[0].serviceOrders[0]).not.toHaveProperty('items');
+    });
+
+    it('recém-aberta, sem mecânico, a ordem aparece como Recebida', async () => {
+      await call('/orders', { body: openBody });
+      const list = await readEnvelope(
+        await call('/me/orders', { token: await customerToken() }),
+      );
+      expect(list.data[0]).toMatchObject({
+        status: 'RECEIVED',
+        statusLabel: 'Recebida',
+      });
+    });
+
+    it('409: entregar com OS aberta ou finalizar fora de execução', async () => {
+      const { orderId, serviceOrderId } = await openQuote();
+
+      const deliver = await call(`/orders/${orderId}/deliver`, {
+        method: 'POST',
+      });
+      expect(deliver.status).toBe(409);
+
+      const finish = await call(`/service-orders/${serviceOrderId}/finish`, {
+        method: 'POST',
+        token: mechanicToken,
+      });
+      expect(finish.status).toBe(409);
+    });
+
+    it('404: ordem de outro cliente ou inexistente', async () => {
+      const { orderId } = await openQuote();
+      const other = await customerToken(UNKNOWN_ID);
+
+      const responses = await Promise.all([
+        call(`/me/orders/${orderId}`, { token: other }),
+        call(`/orders/${UNKNOWN_ID}/deliver`, { method: 'POST' }),
+      ]);
+      for (const response of responses) expect(response.status).toBe(404);
+      const list = await readEnvelope(
+        await call('/me/orders', { token: other }),
+      );
+      expect(list.data).toEqual([]);
     });
   });
 
