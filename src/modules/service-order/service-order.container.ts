@@ -11,21 +11,25 @@ import type { VehicleRepository } from '../vehicle/domain/repositories/vehicle.r
 import { PrismaVehicleRepository } from '../vehicle/infrastructure/persistence/prisma-vehicle.repository.js';
 import { AddProductItemUseCase } from './application/use-cases/add-product-item.use-case.js';
 import { AddServiceItemUseCase } from './application/use-cases/add-service-item.use-case.js';
+import { ApproveQuoteUseCase } from './application/use-cases/approve-quote.use-case.js';
 import { AssignMechanicUseCase } from './application/use-cases/assign-mechanic.use-case.js';
 import { ChangeItemQuantityUseCase } from './application/use-cases/change-item-quantity.use-case.js';
 import { CompleteDiagnosisUseCase } from './application/use-cases/complete-diagnosis.use-case.js';
 import { FindServiceOrderByIdUseCase } from './application/use-cases/find-service-order-by-id.use-case.js';
 import { OpenAdditionalServiceOrderUseCase } from './application/use-cases/open-additional-service-order.use-case.js';
 import { OpenOrderUseCase } from './application/use-cases/open-order.use-case.js';
+import { RejectQuoteUseCase } from './application/use-cases/reject-quote.use-case.js';
 import { RemoveItemUseCase } from './application/use-cases/remove-item.use-case.js';
 import type { OrderOpeningRepository } from './domain/ports/order-opening.repository.js';
 import type { ServiceOrderMailer } from './domain/ports/service-order.mailer.js';
+import type { ServiceOrderApprovalRepository } from './domain/ports/service-order-approval.repository.js';
 import type { OrderRepository } from './domain/repositories/order.repository.js';
 import type { ServiceOrderRepository } from './domain/repositories/service-order.repository.js';
 import { ServiceOrderEmailMailer } from './infrastructure/mailers/service-order.mailer.js';
 import { PrismaOrderRepository } from './infrastructure/persistence/prisma-order.repository.js';
 import { PrismaOrderOpeningRepository } from './infrastructure/persistence/prisma-order-opening.repository.js';
 import { PrismaServiceOrderRepository } from './infrastructure/persistence/prisma-service-order.repository.js';
+import { PrismaServiceOrderApprovalRepository } from './infrastructure/persistence/prisma-service-order-approval.repository.js';
 
 // Composition root do módulo: o único arquivo que liga port → adapter. Os
 // repositórios dos outros contextos entram só para leitura (referência por ID).
@@ -51,6 +55,8 @@ export function makeServiceOrderContainer(shared: SharedContainer) {
   const orderOpening: OrderOpeningRepository = new PrismaOrderOpeningRepository(
     shared.prisma,
   );
+  const approval: ServiceOrderApprovalRepository =
+    new PrismaServiceOrderApprovalRepository(shared.prisma);
   const mailer: ServiceOrderMailer = new ServiceOrderEmailMailer(
     shared.emailSender,
   );
@@ -81,6 +87,13 @@ export function makeServiceOrderContainer(shared: SharedContainer) {
       mailer,
     ),
     findServiceOrderById: new FindServiceOrderByIdUseCase(serviceOrders),
+    approveQuote: new ApproveQuoteUseCase(
+      serviceOrders,
+      orders,
+      products,
+      approval,
+    ),
+    rejectQuote: new RejectQuoteUseCase(serviceOrders, orders, approval),
   };
 }
 

@@ -1,10 +1,11 @@
-import type { PrismaClient } from '../../../../shared/infrastructure/prisma/client.js';
+import type {
+  PrismaClient,
+  PrismaTransaction,
+} from '../../../../shared/infrastructure/prisma/client.js';
 import type { ServiceOrder } from '../../domain/entities/service-order.entity.js';
 import { ServiceOrderError } from '../../domain/errors/service-order.error.js';
 import type { ServiceOrderRepository } from '../../domain/repositories/service-order.repository.js';
 import { ServiceOrderMapper, withAggregate } from './service-order.mapper.js';
-
-type Transaction = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0];
 
 export class PrismaServiceOrderRepository implements ServiceOrderRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -61,7 +62,7 @@ export class PrismaServiceOrderRepository implements ServiceOrderRepository {
   // Upsert dos itens (só a quantidade muda: o preço é snapshot) e insert só das
   // linhas novas do histórico — as já gravadas são puladas (append-only).
   private async writeChildren(
-    tx: Transaction,
+    tx: PrismaTransaction,
     serviceOrder: ServiceOrder,
   ): Promise<void> {
     for (const item of ServiceOrderMapper.toServiceItems(serviceOrder)) {

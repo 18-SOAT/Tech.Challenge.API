@@ -13,6 +13,8 @@ import { InMemoryOrderOpeningRepository } from './in-memory-order-opening.reposi
 import { InMemoryProductRepository } from './in-memory-product.repository.js';
 import { InMemoryServiceRepository } from './in-memory-service.repository.js';
 import { InMemoryServiceOrderRepository } from './in-memory-service-order.repository.js';
+import { InMemoryServiceOrderApprovalRepository } from './in-memory-service-order-approval.repository.js';
+import { InMemoryStockMovementRepository } from './in-memory-stock-movement.repository.js';
 import { InMemoryVehicleRepository } from './in-memory-vehicle.repository.js';
 
 // Documento e placa do cenário padrão (customer-1 é dono do vehicle-1).
@@ -79,6 +81,13 @@ export function makeServiceOrderWorld() {
     serviceOrders,
   );
   const mailer = new FakeServiceOrderMailer();
+  const stockMovements = new InMemoryStockMovementRepository(products);
+  const approval = new InMemoryServiceOrderApprovalRepository(
+    serviceOrders,
+    orders,
+    products,
+    stockMovements,
+  );
 
   customers.items.push(makeCustomer(null));
   vehicles.items.push(makeVehicle());
@@ -100,5 +109,7 @@ export function makeServiceOrderWorld() {
     serviceOrders,
     orderOpening,
     mailer,
+    stockMovements,
+    approval,
   };
 }
