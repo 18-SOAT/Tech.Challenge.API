@@ -20,7 +20,7 @@ Os links do `.drawio` abrem no viewer do diagrams.net, sem login. Como editar e 
 | Ator | No código | Papel no domínio |
 |---|---|---|
 | Cliente | `Customer` (`UserType.CUSTOMER`) | Traz o veículo, aprova ou rejeita o orçamento, acompanha a OS |
-| Atendente | `Employee` + `EmployeeRole.ADMIN` | Atendimento e gestão: identifica o cliente, abre a ordem, atribui o mecânico, cadastra catálogo, estoque e funcionários, entrega o veículo |
+| Atendente | `Employee` + `EmployeeRole.ADMIN` | Atendimento e gestão: identifica o cliente, abre a ordem, atribui o mecânico, registra a decisão do orçamento dada no balcão ou por telefone, cadastra catálogo, estoque e funcionários, entrega o veículo |
 | Mecânico | `Employee` + `EmployeeRole.MECHANIC` | Consulta a fila, diagnostica, inclui serviços e peças, executa e finaliza a OS |
 | Sistema | a API | Gera e envia o orçamento, envia o link de acesso, baixa o estoque, registra o histórico |
 | Fornecedor | — (externo) | Entrega peças e insumos; não é modelado no código |
@@ -122,8 +122,8 @@ Com um status só, um reparo adicional obrigaria a voltar uma OS "Em execução"
 | `Vehicle` | — | `LicensePlate` | Placa válida e única (pode ser corrigida ou convertida para Mercosul); pertence a um cliente (por ID), que não muda; ano entre 1900 e o ano seguinte ao atual; não é excluído se tiver OS. |
 | `Service` | — | `Money` | Nome único no catálogo (sem diferenciar maiúscula); preço ≥ 0 com até 2 casas; duração estimada, se informada, em minutos > 0; inativo não entra em orçamento novo; não é excluído se já entrou em OS (desativa-se). |
 | `Product` | `StockMovement` | `Money` | Saldo nunca negativo; todo saldo muda por movimentação. |
-| `Order` | — | — | Um veículo só tem uma Ordem aberta por vez (checada no use case e, na corrida, no adapter com o veículo travado); o veículo é do cliente informado; reparo adicional só antes da entrega; entrega só com todas as OS terminais (regra validada em `Order.deliver(...)` com os status recebidos do use case). |
-| `ServiceOrder` | `ServiceItem`, `ProductItem`, `ServiceOrderStatusHistory` | `Money` | Transições só pelo fluxo acima; responsável é MECHANIC, e só ele (ou um ADMIN) trabalha na OS; itens só antes do orçamento, com quantidade inteira > 0 e catálogo ativo; orçamento exige responsável e ao menos um item; aprovação congela o valor; toda transição grava histórico. |
+| `Order` | — | — | Um veículo só tem uma Ordem aberta por vez (checada no use case e, na corrida, no adapter com o veículo travado); o veículo é do cliente informado; reparo adicional só antes da entrega; o orçamento de uma OS da Ordem só é aprovado ou rejeitado pelo cliente dela ou por um ADMIN (`Order.assertQuoteCanBeDecidedBy()`); entrega só com todas as OS terminais (regra validada em `Order.deliver(...)` com os status recebidos do use case). |
+| `ServiceOrder` | `ServiceItem`, `ProductItem`, `ServiceOrderStatusHistory` | `Money` | Transições só pelo fluxo acima; responsável é MECHANIC, e só ele (ou um ADMIN) trabalha na OS; itens só antes do orçamento, com quantidade inteira > 0 e catálogo ativo; orçamento exige responsável e ao menos um item; só o orçamento `AWAITING_APPROVAL` é aprovado ou rejeitado; aprovação congela o valor; toda transição grava histórico (cliente fica como autor `null`). |
 
 `Order` e `ServiceOrder` são agregados **separados**. A OS referencia a Ordem pelo `orderId`. A regra que cruza os dois (entrega) fica no use case de entrega, que carrega as OS da Ordem e passa os status para a `Order` validar.
 
@@ -180,7 +180,7 @@ Os eventos **não viram classes**. No MVP, nenhum consumidor reage a eles de for
 | `Diagnóstico concluído` → `Orçamento gerado` | `ServiceOrder.completeDiagnosis()` | histórico `AWAITING_APPROVAL` |
 | `Orçamento enviado para aprovação` | `ServiceOrderMailer.sendQuote()` no use case, depois do commit | — (efeito externo) |
 | `Orçamento aprovado` | `ServiceOrder.approve()` | histórico `IN_EXECUTION` + `approved_amount` / `approved_at` |
-| `Estoque baixado` | `Product.withdraw(qty)` | `stock_movements` `OUT` com `service_order_id` |
+| `Estoque baixado` | `Product.withdraw(qty, serviceOrderId)` | `stock_movements` `OUT` com `service_order_id` |
 | `Ordem em andamento` | `Order.start()` | `orders` em `IN_PROGRESS` |
 | `Orçamento rejeitado` | `ServiceOrder.reject()` | histórico `REJECTED` |
 | `OS finalizada` | `ServiceOrder.finish()` | histórico `FINISHED` |
@@ -213,9 +213,17 @@ Se no futuro uma política precisar rodar fora da transação (ex: um e-mail com
 
 A aprovação e a baixa de estoque acontecem na mesma transação ([padrão de transações](../code/patterns/repository.md#transações-port-nomeado-pela-operação)). Se algum produto não tiver saldo:
 
-- a transação é desfeita inteira e o cliente recebe o erro de estoque insuficiente;
+- a transação é desfeita inteira e o cliente recebe o erro de estoque insuficiente (409);
 - a OS continua `AWAITING_APPROVAL`, com o mesmo orçamento;
 - o atendente registra a entrada do produto (ele aparece em "Produtos abaixo do mínimo") e o cliente aprova de novo.
+
+O saldo é checado duas vezes: `Product.withdraw()` recusa com o saldo lido (erro rápido e claro), e o adapter baixa com update condicional (`stock_quantity >= quantidade`), que é quem garante a regra quando duas aprovações disputam a mesma peça. O status da OS também é atualizado com condição (`status = AWAITING_APPROVAL`): aprovar e rejeitar ao mesmo tempo deixa passar só a primeira decisão.
+
+### Quem decide o orçamento
+
+- **Cliente dono da Ordem**, autenticado (auto-cadastro ou primeiro acesso): é a "autorização via aplicativo" do enunciado.
+- **Atendente (ADMIN)**, registrando a decisão que o cliente deu no balcão ou por telefone; o histórico guarda quem registrou.
+- Qualquer outro (outro cliente, mecânico) recebe 403 — antes de qualquer checagem de status, para não revelar o andamento da OS de outro cliente.
 
 ### Tempo médio de execução
 
@@ -253,10 +261,10 @@ Legenda: *Comando*, `Evento`, ⟶ política. A notação visual está em [event-
 
 | Ator | Comando | Agregado | Evento | Política / observação |
 |---|---|---|---|---|
-| Cliente | *Aprovar orçamento* | `ServiceOrder` | `Orçamento aprovado` (Em execução) | Valor congelado; ⟶ baixar estoque e gravar histórico **na mesma transação** |
+| Cliente (ou Atendente registrando) | *Aprovar orçamento* | `ServiceOrder` | `Orçamento aprovado` (Em execução) | Valor congelado; ⟶ baixar estoque e gravar histórico **na mesma transação** |
 | Sistema | *Baixar estoque* | `Product` | `Estoque baixado` | Saldo insuficiente ⟶ nada é gravado; OS segue Aguardando aprovação |
 | Sistema | *Iniciar ordem* | `Order` | `Ordem em andamento` | Na primeira OS aprovada |
-| Cliente | *Rejeitar orçamento* | `ServiceOrder` | `Orçamento rejeitado` | Status terminal; estoque intocado |
+| Cliente (ou Atendente registrando) | *Rejeitar orçamento* | `ServiceOrder` | `Orçamento rejeitado` | Status terminal; estoque intocado |
 | Mecânico | *Finalizar OS* | `ServiceOrder` | `OS finalizada` | Fecha o tempo de execução (histórico) |
 | Atendente | *Abrir reparo adicional* | `ServiceOrder` | `OS criada` | Nova OS na mesma Ordem, com orçamento próprio |
 | Atendente | *Entregar veículo* | `Order` | `Ordem entregue` | Só se todas as OS estiverem terminais |
@@ -318,7 +326,7 @@ Cada elemento do modelo e o arquivo onde ele vive.
 | `OrderStatus`, `ServiceOrderStatus` | Enums | `src/modules/service-order/domain/enums/` |
 | Abertura atômica (Order + 1ª ServiceOrder + histórico) | Port + adapter | `src/modules/service-order/domain/ports/order-opening.repository.ts` |
 | Persistência do agregado OS (itens sincronizados + histórico append-only) | Repository | `src/modules/service-order/domain/repositories/service-order.repository.ts` |
-| Aprovação atômica (aprovar + baixar estoque + histórico) | Port + adapter | `src/modules/service-order/domain/ports/service-order-approval.repository.ts` |
+| Decisão atômica do orçamento (aprovar + baixar estoque + iniciar ordem + histórico; rejeitar) | Port + adapter | `src/modules/service-order/domain/ports/service-order-approval.repository.ts`, `src/modules/service-order/infrastructure/persistence/prisma-service-order-approval.repository.ts` |
 | Movimentação atômica (lançamento + saldo do produto) | Port + adapter | `src/modules/inventory/domain/ports/stock-movement.repository.ts` |
 | Cadastro atômico (User + Customer) | Port + adapter | `src/modules/auth/domain/ports/customer-registration.repository.ts` |
 | Cadastro atômico do funcionário (User + Employee) | Port + adapter | `src/modules/employee/domain/ports/employee-registration.repository.ts` |
@@ -327,7 +335,7 @@ Cada elemento do modelo e o arquivo onde ele vive.
 | E-mails do link de acesso | Port + Mailer | `src/modules/auth/domain/ports/access-link.mailer.ts`, `src/modules/auth/infrastructure/mailers/auth.mailer.ts` |
 | Primeiro acesso, redefinição, definir senha | Use cases | `src/modules/auth/application/use-cases/request-first-access.use-case.ts`, `request-password-reset.use-case.ts`, `set-password.use-case.ts` |
 | Cadastrar funcionário, alterar papel | Use cases | `src/modules/employee/application/use-cases/create-employee.use-case.ts`, `change-employee-role.use-case.ts` |
-| Abrir ordem, reparo adicional, atribuir mecânico, incluir/alterar/remover item, concluir diagnóstico, detalhe da OS | Use cases | `src/modules/service-order/application/use-cases/` (`open-order`, `open-additional-service-order`, `assign-mechanic`, `add-service-item`, `add-product-item`, `change-item-quantity`, `remove-item`, `complete-diagnosis`, `find-service-order-by-id`) |
+| Abrir ordem, reparo adicional, atribuir mecânico, incluir/alterar/remover item, concluir diagnóstico, detalhe da OS, aprovar/rejeitar orçamento | Use cases | `src/modules/service-order/application/use-cases/` (`open-order`, `open-additional-service-order`, `assign-mechanic`, `add-service-item`, `add-product-item`, `change-item-quantity`, `remove-item`, `complete-diagnosis`, `find-service-order-by-id`, `approve-quote`, `reject-quote`) |
 | E-mail do orçamento | Port + Mailer | `src/modules/service-order/domain/ports/service-order.mailer.ts`, `src/modules/service-order/infrastructure/mailers/service-order.mailer.ts` |
 | Envio de e-mail (link de acesso, orçamento) | Port + adapter (SMTP) | `src/shared/infrastructure/email/email-sender.port.ts` |
 | Erros de domínio | Catálogos por contexto | `src/modules/*/domain/errors/*.error.ts` |

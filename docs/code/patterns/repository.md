@@ -86,56 +86,51 @@ Na forma interativa, todas as queries usam o `tx` recebido, nunca `this.prisma`:
 
 ### Exemplo de referência: aprovação de orçamento
 
-Aprovar congela o valor, muda o status, grava o histórico e baixa o estoque, tudo atômico.
+Aprovar congela o valor, muda o status, grava o histórico, baixa o estoque e inicia a Ordem, tudo atômico.
 
 ```typescript
 // modules/service-order/domain/ports/service-order-approval.repository.ts
 export interface ServiceOrderApprovalRepository {
-  approve(serviceOrder: ServiceOrder, movements: StockMovement[]): Promise<void>;
+  approve(serviceOrder: ServiceOrder, order: Order, movements: StockMovement[]): Promise<void>;
+  reject(serviceOrder: ServiceOrder): Promise<void>;
 }
 ```
 
 ```typescript
 // modules/service-order/application/use-cases/approve-quote.use-case.ts
-async execute(input: ApproveQuoteInput): Promise<void> {
-  const serviceOrder = await this.serviceOrders.findById(input.serviceOrderId);
-  if (!serviceOrder) throw ServiceOrderError.notFound();
-
-  serviceOrder.approve(); // a Entity valida o status e congela o valor
-  await this.approvalRepository.approve(serviceOrder, serviceOrder.stockOutMovements());
+async execute(input: ApproveQuoteInput): Promise<ServiceOrder> {
+  const { serviceOrder, order } = await loadQuoteForDecision(/* ... */); // + quem decide
+  serviceOrder.approve(quoteDeciderId(input.decider)); // a Entity valida o status e congela o valor
+  const movements = []; // product.withdraw(qty, serviceOrderId) para cada peça
+  order.start();
+  await this.approvalRepository.approve(serviceOrder, order, movements);
+  return serviceOrder;
 }
 ```
 
 ```typescript
 // modules/service-order/infrastructure/persistence/prisma-service-order-approval.repository.ts
-async approve(serviceOrder: ServiceOrder, movements: StockMovement[]): Promise<void> {
+async approve(serviceOrder: ServiceOrder, order: Order, movements: StockMovement[]): Promise<void> {
   await this.prisma.$transaction(async (tx) => {
-    // Update condicional: se outra requisição já aprovou/rejeitou, nada é atualizado.
-    const { count } = await tx.serviceOrder.updateMany({
-      where: { id: serviceOrder.idValue, status: 'AWAITING_APPROVAL' },
-      data: ServiceOrderMapper.toApprovalObject(serviceOrder),
-    });
-    if (count === 0) throw ServiceOrderError.notAwaitingApproval();
-
-    await tx.serviceOrderStatusHistory.create({
-      data: ServiceOrderMapper.toHistoryObject(serviceOrder),
-    });
-
+    // Update condicional: se outra requisição já aprovou/rejeitou, count = 0 e aborta.
+    await this.decide(tx, serviceOrder); // status + valor aprovado + histórico
     for (const movement of movements) {
-      // Só baixa se houver saldo; senão aborta e desfaz tudo acima.
-      const { count } = await tx.product.updateMany({
-        where: { id: movement.productId, stockQuantity: { gte: movement.quantity } },
-        data: { stockQuantity: { decrement: movement.quantity } },
-      });
-      if (count === 0) throw ProductError.insufficientStock();
-
-      await tx.stockMovement.create({ data: StockMovementMapper.toObject(movement) });
+      // Só baixa se houver saldo; senão lança e desfaz tudo acima.
+      await applyStockMovement(tx, movement);
     }
+    await tx.order.updateMany({
+      where: { id: order.idValue, status: 'RECEIVED' },
+      data: { status: order.statusValue },
+    });
   });
 }
 ```
 
-A rejeição segue o mesmo formato, sem a parte de estoque (status + histórico).
+`applyStockMovement(tx, movement)` (em `prisma-stock-movement.repository.ts`) é a mesma baixa condicional do `StockMovementRepository.record()`, exposta para rodar dentro da transação de outro fluxo: a regra "saldo nunca negativo" fica escrita num lugar só. O tipo `PrismaTransaction` (`shared/infrastructure/prisma/client.ts`) é o client que o `$transaction` entrega.
+
+A rejeição segue o mesmo formato, sem a parte de estoque e da Ordem (status + histórico).
+
+O rollback e a corrida são provados contra Postgres real em `test/integration/service-order-approval.integration.spec.ts` (`bun run test:integration`).
 
 ## Mapper: `toEntity` / `toObject`
 
