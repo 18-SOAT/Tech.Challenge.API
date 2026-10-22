@@ -28,6 +28,15 @@ import { ListStockMovementsUseCase } from '../../src/modules/inventory/applicati
 import { ReceiveStockUseCase } from '../../src/modules/inventory/application/use-cases/receive-stock.use-case.js';
 import { UpdateProductUseCase } from '../../src/modules/inventory/application/use-cases/update-product.use-case.js';
 import { UpdateServiceUseCase } from '../../src/modules/inventory/application/use-cases/update-service.use-case.js';
+import { AddProductItemUseCase } from '../../src/modules/service-order/application/use-cases/add-product-item.use-case.js';
+import { AddServiceItemUseCase } from '../../src/modules/service-order/application/use-cases/add-service-item.use-case.js';
+import { AssignMechanicUseCase } from '../../src/modules/service-order/application/use-cases/assign-mechanic.use-case.js';
+import { ChangeItemQuantityUseCase } from '../../src/modules/service-order/application/use-cases/change-item-quantity.use-case.js';
+import { CompleteDiagnosisUseCase } from '../../src/modules/service-order/application/use-cases/complete-diagnosis.use-case.js';
+import { FindServiceOrderByIdUseCase } from '../../src/modules/service-order/application/use-cases/find-service-order-by-id.use-case.js';
+import { OpenAdditionalServiceOrderUseCase } from '../../src/modules/service-order/application/use-cases/open-additional-service-order.use-case.js';
+import { OpenOrderUseCase } from '../../src/modules/service-order/application/use-cases/open-order.use-case.js';
+import { RemoveItemUseCase } from '../../src/modules/service-order/application/use-cases/remove-item.use-case.js';
 import { CreateVehicleUseCase } from '../../src/modules/vehicle/application/use-cases/create-vehicle.use-case.js';
 import { DeleteVehicleUseCase } from '../../src/modules/vehicle/application/use-cases/delete-vehicle.use-case.js';
 import { FindVehicleByIdUseCase } from '../../src/modules/vehicle/application/use-cases/find-vehicle-by-id.use-case.js';
@@ -37,14 +46,18 @@ import { FakeAccessLinkMailer } from './fake-access-link-mailer.js';
 import { FakeAccessLinkTokenService } from './fake-access-link-token-service.js';
 import { FakeDatabaseHealthCheck } from './fake-database-health.js';
 import { FakePasswordHasher } from './fake-password-hasher.js';
+import { FakeServiceOrderMailer } from './fake-service-order.mailer.js';
 import { FakeTokenService } from './fake-token-service.js';
 import { InMemoryCustomerRepository } from './in-memory-customer.repository.js';
 import { InMemoryCustomerAccessActivationRepository } from './in-memory-customer-access-activation.repository.js';
 import { InMemoryCustomerRegistrationRepository } from './in-memory-customer-registration.repository.js';
 import { InMemoryEmployeeRepository } from './in-memory-employee.repository.js';
 import { InMemoryEmployeeRegistrationRepository } from './in-memory-employee-registration.repository.js';
+import { InMemoryOrderRepository } from './in-memory-order.repository.js';
+import { InMemoryOrderOpeningRepository } from './in-memory-order-opening.repository.js';
 import { InMemoryProductRepository } from './in-memory-product.repository.js';
 import { InMemoryServiceRepository } from './in-memory-service.repository.js';
+import { InMemoryServiceOrderRepository } from './in-memory-service-order.repository.js';
 import { InMemoryStockMovementRepository } from './in-memory-stock-movement.repository.js';
 import { InMemoryUserRepository } from './in-memory-user.repository.js';
 import { InMemoryVehicleRepository } from './in-memory-vehicle.repository.js';
@@ -65,6 +78,9 @@ export function makeTestApp() {
   const mailer = new FakeAccessLinkMailer();
   const claims = new AuthClaimsResolver(customers, employees);
   const database = new FakeDatabaseHealthCheck();
+  const orders = new InMemoryOrderRepository();
+  const serviceOrders = new InMemoryServiceOrderRepository();
+  const quoteMailer = new FakeServiceOrderMailer();
 
   const app = createApp({
     tokenService: tokens,
@@ -140,6 +156,33 @@ export function makeTestApp() {
         stockMovements,
       ),
     },
+    serviceOrders: {
+      openOrder: new OpenOrderUseCase(
+        customers,
+        vehicles,
+        services,
+        orders,
+        new InMemoryOrderOpeningRepository(orders, serviceOrders),
+      ),
+      openAdditionalServiceOrder: new OpenAdditionalServiceOrderUseCase(
+        orders,
+        serviceOrders,
+      ),
+      assignMechanic: new AssignMechanicUseCase(serviceOrders, employees),
+      addServiceItem: new AddServiceItemUseCase(serviceOrders, services),
+      addProductItem: new AddProductItemUseCase(serviceOrders, products),
+      changeItemQuantity: new ChangeItemQuantityUseCase(serviceOrders),
+      removeItem: new RemoveItemUseCase(serviceOrders),
+      completeDiagnosis: new CompleteDiagnosisUseCase(
+        serviceOrders,
+        orders,
+        customers,
+        services,
+        products,
+        quoteMailer,
+      ),
+      findServiceOrderById: new FindServiceOrderByIdUseCase(serviceOrders),
+    },
   });
 
   return {
@@ -155,5 +198,8 @@ export function makeTestApp() {
     accessLinks,
     mailer,
     database,
+    orders,
+    serviceOrders,
+    quoteMailer,
   };
 }

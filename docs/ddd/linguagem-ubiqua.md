@@ -62,7 +62,7 @@ Os contextos se referenciam **só por ID**. Uma OS guarda `productId` e `service
 | Funcionário | `Employee` | Pessoa da oficina com login e um papel (`EmployeeRole`), cadastrada pelo ADMIN. |
 | Administrador / Atendente | `EmployeeRole.ADMIN` | Faz o atendimento e a gestão: abre ordens, cadastra clientes, catálogo, estoque e funcionários. |
 | Mecânico | `EmployeeRole.MECHANIC` | Executa as OS. |
-| Mecânico responsável | `ServiceOrder.assigneeId` | Mecânico atribuído pelo atendente a uma OS. |
+| Mecânico responsável | `ServiceOrder.assigneeId` | Mecânico atribuído pelo atendente a uma OS. Só ele (ou um ADMIN) inclui itens, conclui o diagnóstico e vê a OS (`ServiceOrder.assertCanBeWorkedBy`). |
 | Veículo | `Vehicle` | Placa, marca, modelo e ano. Pertence a um cliente. |
 | Placa | `LicensePlate` (VO) | Padrão antigo (`ABC1234`) ou Mercosul (`ABC1D23`), maiúscula e sem hífen. |
 | Dinheiro | `Money` (VO) | Valor em reais com 2 casas decimais, nunca negativo. |
@@ -74,11 +74,11 @@ Os contextos se referenciam **só por ID**. Uma OS guarda `productId` e `service
 | Produtos abaixo do mínimo | read model | Consulta dos produtos com `stockQuantity < minimumStock`, usada pelo atendente para repor. |
 | Movimentação de estoque | `StockMovement` | Lançamento no livro-razão do estoque: `IN` (entrada), `OUT` (saída/baixa), `ADJUSTMENT` (ajuste de inventário). Todo saldo muda por uma movimentação. `IN`/`OUT` guardam unidades positivas; o ajuste guarda a diferença com sinal (-3 = 3 a menos), então o saldo é a soma dos lançamentos. |
 | Baixa de estoque | `StockMovement` `OUT` | Saída das peças/insumos de uma OS, feita na aprovação do orçamento. |
-| Ordem / Estadia | `Order` | Período do veículo na oficina, da chegada à entrega. Agrupa todas as OS da visita e tem número legível (`number`). |
+| Ordem / Estadia | `Order` | Período do veículo na oficina, da chegada à entrega. Agrupa todas as OS da visita e tem número legível (`number`). Aberta pelo CPF/CNPJ do cliente e pela placa; um veículo só tem uma Ordem aberta (não entregue) por vez. |
 | Ordem de Serviço (OS) | `ServiceOrder` | Unidade de trabalho com serviços e peças. Nasce como orçamento e, aprovada, vira a OS executada. |
 | Fila de OS | read model | OS abertas ordenadas por status e data de chegada da ordem. É o que o mecânico consulta para saber o que fazer primeiro. |
 | Orçamento | `ServiceOrder` em `AWAITING_APPROVAL` | Soma dos itens da OS, enviada ao cliente por e-mail para aprovar ou rejeitar. |
-| Item de serviço / de produto | `ServiceItem` / `ProductItem` | Linha da OS com quantidade e **preço unitário congelado** no momento em que o item entra (snapshot). |
+| Item de serviço / de produto | `ServiceItem` / `ProductItem` | Linha da OS com quantidade e **preço unitário congelado** no momento em que o item entra (snapshot). Incluir o mesmo item de novo soma na quantidade; durante o diagnóstico, a quantidade pode ser corrigida e o item removido. |
 | Valor aprovado | `ServiceOrder.approvedAmount` | Total do orçamento congelado na aprovação. Mudança posterior no catálogo não altera a OS. |
 | Reparo adicional | nova `ServiceOrder` na mesma `Order` | Problema achado durante a estadia. Gera uma OS nova, com orçamento próprio, sem alterar a já aprovada. |
 | Histórico de status | `ServiceOrderStatusHistory` | Uma linha por transição (append-only), com quem mudou (`changedById`; `null` = cliente/sistema) e quando. Fonte do tempo médio de execução. |
@@ -122,8 +122,8 @@ Com um status só, um reparo adicional obrigaria a voltar uma OS "Em execução"
 | `Vehicle` | — | `LicensePlate` | Placa válida e única (pode ser corrigida ou convertida para Mercosul); pertence a um cliente (por ID), que não muda; ano entre 1900 e o ano seguinte ao atual; não é excluído se tiver OS. |
 | `Service` | — | `Money` | Nome único no catálogo (sem diferenciar maiúscula); preço ≥ 0 com até 2 casas; duração estimada, se informada, em minutos > 0; inativo não entra em orçamento novo; não é excluído se já entrou em OS (desativa-se). |
 | `Product` | `StockMovement` | `Money` | Saldo nunca negativo; todo saldo muda por movimentação. |
-| `Order` | — | — | Entrega só com todas as OS terminais (regra validada em `Order.deliver(...)` com os status recebidos do use case). |
-| `ServiceOrder` | `ServiceItem`, `ProductItem`, `ServiceOrderStatusHistory` | `Money` | Transições só pelo fluxo acima; responsável é MECHANIC; itens só antes do orçamento; aprovação congela o valor; toda transição grava histórico. |
+| `Order` | — | — | Um veículo só tem uma Ordem aberta por vez (checada no use case e, na corrida, no adapter com o veículo travado); o veículo é do cliente informado; reparo adicional só antes da entrega; entrega só com todas as OS terminais (regra validada em `Order.deliver(...)` com os status recebidos do use case). |
+| `ServiceOrder` | `ServiceItem`, `ProductItem`, `ServiceOrderStatusHistory` | `Money` | Transições só pelo fluxo acima; responsável é MECHANIC, e só ele (ou um ADMIN) trabalha na OS; itens só antes do orçamento, com quantidade inteira > 0 e catálogo ativo; orçamento exige responsável e ao menos um item; aprovação congela o valor; toda transição grava histórico. |
 
 `Order` e `ServiceOrder` são agregados **separados**. A OS referencia a Ordem pelo `orderId`. A regra que cruza os dois (entrega) fica no use case de entrega, que carrega as OS da Ordem e passa os status para a `Order` validar.
 
@@ -176,8 +176,9 @@ Os eventos **não viram classes**. No MVP, nenhum consumidor reage a eles de for
 | `OS criada` | `ServiceOrder.create()` | `service_orders` + histórico `IN_DIAGNOSIS` |
 | `Mecânico atribuído` | `ServiceOrder.assign(mechanicId)` | `service_orders.assignee_id` |
 | `Serviço incluído` / `Peça/insumo incluído` | `ServiceOrder.addService()` / `addProduct()` | `service_items` / `product_items` com preço snapshot |
+| `Quantidade do item alterada` / `Item removido` | `ServiceOrder.changeItemQuantity()` / `removeItem()` | `service_items` / `product_items` (quantidade / linha removida) |
 | `Diagnóstico concluído` → `Orçamento gerado` | `ServiceOrder.completeDiagnosis()` | histórico `AWAITING_APPROVAL` |
-| `Orçamento enviado para aprovação` | `EmailSender.send()` no use case | — (efeito externo) |
+| `Orçamento enviado para aprovação` | `ServiceOrderMailer.sendQuote()` no use case, depois do commit | — (efeito externo) |
 | `Orçamento aprovado` | `ServiceOrder.approve()` | histórico `IN_EXECUTION` + `approved_amount` / `approved_at` |
 | `Estoque baixado` | `Product.withdraw(qty)` | `stock_movements` `OUT` com `service_order_id` |
 | `Ordem em andamento` | `Order.start()` | `orders` em `IN_PROGRESS` |
@@ -235,12 +236,13 @@ Legenda: *Comando*, `Evento`, ⟶ política. A notação visual está em [event-
 | Atendente | *Identificar cliente por CPF/CNPJ* | `Customer` | `Cliente identificado` | Não encontrado ⟶ cadastrar |
 | Atendente | *Cadastrar cliente* | `Customer` | `Cliente cadastrado` | Documento inválido ou duplicado ⟶ erro |
 | Atendente | *Cadastrar veículo* | `Vehicle` | `Veículo cadastrado` | Placa inválida ou duplicada ⟶ erro |
-| Atendente | *Abrir ordem* | `Order` | `Ordem aberta` (Recebida) | ⟶ criar a primeira OS |
+| Atendente | *Abrir ordem* | `Order` | `Ordem aberta` (Recebida) | Pelo CPF/CNPJ e pela placa; veículo de outro cliente ou já com ordem aberta ⟶ erro; ⟶ criar a primeira OS |
 | Sistema | *Criar OS* | `ServiceOrder` | `OS criada` (Em diagnóstico) | |
 | Atendente | *Atribuir mecânico* | `ServiceOrder` | `Mecânico atribuído` | Só funcionário com papel MECHANIC |
 | Mecânico | *Consultar fila de OS* | read model | — | OS ordenadas por status e chegada |
 | Mecânico | *Incluir serviço* | `ServiceOrder` | `Serviço incluído` | Preço copiado do catálogo (snapshot) |
 | Mecânico | *Incluir peça/insumo* | `ServiceOrder` | `Peça/insumo incluído` | Preço copiado do catálogo (snapshot) |
+| Mecânico | *Alterar quantidade / remover item* | `ServiceOrder` | `Quantidade do item alterada` / `Item removido` | Só em diagnóstico, pelo mecânico responsável ou ADMIN; o preço unitário não muda |
 | Mecânico | *Concluir diagnóstico* | `ServiceOrder` | `Diagnóstico concluído` | ⟶ gerar orçamento |
 | Sistema | *Gerar orçamento* | `ServiceOrder` | `Orçamento gerado` (Aguardando aprovação) | ⟶ notificar o cliente |
 | Sistema | *Enviar orçamento ao cliente* | — | `Orçamento enviado para aprovação` | Sistema externo: e-mail |
@@ -314,6 +316,8 @@ Cada elemento do modelo e o arquivo onde ele vive.
 | `ServiceItem`, `ProductItem` | Entidades | `src/modules/service-order/domain/entities/service-item.entity.ts`, `product-item.entity.ts` |
 | `ServiceOrderStatusHistory` | Entidade | `src/modules/service-order/domain/entities/service-order-status-history.entity.ts` |
 | `OrderStatus`, `ServiceOrderStatus` | Enums | `src/modules/service-order/domain/enums/` |
+| Abertura atômica (Order + 1ª ServiceOrder + histórico) | Port + adapter | `src/modules/service-order/domain/ports/order-opening.repository.ts` |
+| Persistência do agregado OS (itens sincronizados + histórico append-only) | Repository | `src/modules/service-order/domain/repositories/service-order.repository.ts` |
 | Aprovação atômica (aprovar + baixar estoque + histórico) | Port + adapter | `src/modules/service-order/domain/ports/service-order-approval.repository.ts` |
 | Movimentação atômica (lançamento + saldo do produto) | Port + adapter | `src/modules/inventory/domain/ports/stock-movement.repository.ts` |
 | Cadastro atômico (User + Customer) | Port + adapter | `src/modules/auth/domain/ports/customer-registration.repository.ts` |
@@ -323,6 +327,8 @@ Cada elemento do modelo e o arquivo onde ele vive.
 | E-mails do link de acesso | Port + Mailer | `src/modules/auth/domain/ports/access-link.mailer.ts`, `src/modules/auth/infrastructure/mailers/auth.mailer.ts` |
 | Primeiro acesso, redefinição, definir senha | Use cases | `src/modules/auth/application/use-cases/request-first-access.use-case.ts`, `request-password-reset.use-case.ts`, `set-password.use-case.ts` |
 | Cadastrar funcionário, alterar papel | Use cases | `src/modules/employee/application/use-cases/create-employee.use-case.ts`, `change-employee-role.use-case.ts` |
+| Abrir ordem, reparo adicional, atribuir mecânico, incluir/alterar/remover item, concluir diagnóstico, detalhe da OS | Use cases | `src/modules/service-order/application/use-cases/` (`open-order`, `open-additional-service-order`, `assign-mechanic`, `add-service-item`, `add-product-item`, `change-item-quantity`, `remove-item`, `complete-diagnosis`, `find-service-order-by-id`) |
+| E-mail do orçamento | Port + Mailer | `src/modules/service-order/domain/ports/service-order.mailer.ts`, `src/modules/service-order/infrastructure/mailers/service-order.mailer.ts` |
 | Envio de e-mail (link de acesso, orçamento) | Port + adapter (SMTP) | `src/shared/infrastructure/email/email-sender.port.ts` |
 | Erros de domínio | Catálogos por contexto | `src/modules/*/domain/errors/*.error.ts` |
 | Persistência | Prisma | `prisma/schema.prisma` |

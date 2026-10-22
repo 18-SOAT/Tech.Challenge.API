@@ -4,6 +4,8 @@ import { CustomerErrorCode } from '../../../modules/customer/domain/errors/custo
 import { EmployeeErrorCode } from '../../../modules/employee/domain/errors/employee.error.js';
 import { ProductErrorCode } from '../../../modules/inventory/domain/errors/product.error.js';
 import { ServiceErrorCode } from '../../../modules/inventory/domain/errors/service.error.js';
+import { OrderErrorCode } from '../../../modules/service-order/domain/errors/order.error.js';
+import { ServiceOrderErrorCode } from '../../../modules/service-order/domain/errors/service-order.error.js';
 import { UserErrorCode } from '../../../modules/user/domain/errors/user.error.js';
 import { VehicleErrorCode } from '../../../modules/vehicle/domain/errors/vehicle.error.js';
 import { SharedErrorCode } from '../../domain/errors/shared.error.js';
@@ -19,6 +21,8 @@ const ALL_ERROR_CODES = [
   VehicleErrorCode,
   ServiceErrorCode,
   ProductErrorCode,
+  OrderErrorCode,
+  ServiceOrderErrorCode,
   SharedErrorCode,
 ].flatMap((codes) => Object.values(codes));
 
