@@ -372,4 +372,100 @@ describe('ServiceOrder', () => {
       );
     });
   });
+
+  describe('approve', () => {
+    it('congela o total como valor aprovado e vai para Em execução', () => {
+      const serviceOrder = awaitingApproval();
+
+      serviceOrder.approve(null);
+
+      expect(serviceOrder.statusValue).toBe(ServiceOrderStatus.IN_EXECUTION);
+      expect(serviceOrder.approvedAmountValue?.value).toBe(89.9);
+      expect(serviceOrder.approvedAtValue).toBeInstanceOf(Date);
+      expect(serviceOrder.historyValue.at(-1)?.statusValue).toBe(
+        ServiceOrderStatus.IN_EXECUTION,
+      );
+      expect(serviceOrder.historyValue.at(-1)?.changedByIdValue).toBeNull();
+    });
+
+    it('grava quem registrou a decisão no histórico', () => {
+      const serviceOrder = awaitingApproval();
+      serviceOrder.approve('admin-1');
+      expect(serviceOrder.historyValue.at(-1)?.changedByIdValue).toBe(
+        'admin-1',
+      );
+    });
+
+    it.each([
+      ServiceOrderStatus.IN_DIAGNOSIS,
+      ServiceOrderStatus.IN_EXECUTION,
+      ServiceOrderStatus.REJECTED,
+      ServiceOrderStatus.FINISHED,
+    ])('recusa aprovar OS em %s', (status) => {
+      expect(() => restoreWithStatus(status).approve(null)).toThrow(
+        codeOf(ServiceOrderErrorCode.NOT_AWAITING_APPROVAL),
+      );
+    });
+  });
+
+  describe('finish', () => {
+    it('finaliza a OS em execução, com quem finalizou no histórico', () => {
+      const serviceOrder = awaitingApproval();
+      serviceOrder.approve(null);
+
+      serviceOrder.finish(MECHANIC.id);
+
+      expect(serviceOrder.statusValue).toBe(ServiceOrderStatus.FINISHED);
+      expect(serviceOrder.isClosed).toBeTrue();
+      expect(serviceOrder.historyValue.at(-1)?.statusValue).toBe(
+        ServiceOrderStatus.FINISHED,
+      );
+      expect(serviceOrder.historyValue.at(-1)?.changedByIdValue).toBe(
+        MECHANIC.id,
+      );
+    });
+
+    it.each([
+      ServiceOrderStatus.IN_DIAGNOSIS,
+      ServiceOrderStatus.AWAITING_APPROVAL,
+      ServiceOrderStatus.FINISHED,
+      ServiceOrderStatus.REJECTED,
+    ])('recusa finalizar OS em %s', (status) => {
+      expect(() => restoreWithStatus(status).finish(MECHANIC.id)).toThrow(
+        codeOf(ServiceOrderErrorCode.NOT_IN_EXECUTION),
+      );
+    });
+  });
+
+  describe('loadedStatus (lock otimista)', () => {
+    it('OS nova não foi lida do banco; a restaurada guarda o status lido', () => {
+      expect(create().loadedStatusValue).toBeNull();
+      const restored = restoreWithStatus(ServiceOrderStatus.IN_EXECUTION);
+      restored.finish(MECHANIC.id);
+      expect(restored.loadedStatusValue).toBe(ServiceOrderStatus.IN_EXECUTION);
+    });
+  });
+
+  describe('reject', () => {
+    it('encerra a OS como Rejeitada, sem valor aprovado', () => {
+      const serviceOrder = awaitingApproval();
+
+      serviceOrder.reject(null);
+
+      expect(serviceOrder.statusValue).toBe(ServiceOrderStatus.REJECTED);
+      expect(serviceOrder.isClosed).toBeTrue();
+      expect(serviceOrder.approvedAmountValue).toBeNull();
+      expect(serviceOrder.historyValue.at(-1)?.statusValue).toBe(
+        ServiceOrderStatus.REJECTED,
+      );
+    });
+
+    it('recusa rejeitar o que já foi decidido', () => {
+      const serviceOrder = awaitingApproval();
+      serviceOrder.approve(null);
+      expect(() => serviceOrder.reject(null)).toThrow(
+        codeOf(ServiceOrderErrorCode.NOT_AWAITING_APPROVAL),
+      );
+    });
+  });
 });

@@ -7,12 +7,10 @@ import type {
   ServiceOrderActor,
 } from '../../domain/entities/service-order.entity.js';
 import { ServiceOrderError } from '../../domain/errors/service-order.error.js';
-import type {
-  QuoteLine,
-  ServiceOrderMailer,
-} from '../../domain/ports/service-order.mailer.js';
+import type { ServiceOrderMailer } from '../../domain/ports/service-order.mailer.js';
 import type { OrderRepository } from '../../domain/repositories/order.repository.js';
 import type { ServiceOrderRepository } from '../../domain/repositories/service-order.repository.js';
+import { buildQuoteLines } from './quote-lines.js';
 
 export interface CompleteDiagnosisInput {
   serviceOrderId: string;
@@ -61,29 +59,11 @@ export class CompleteDiagnosisUseCase
     );
     if (!customer) return;
 
-    const lines: QuoteLine[] = [];
-    for (const item of serviceOrder.servicesValue) {
-      const service = await this.serviceRepository.findById(
-        item.serviceIdValue,
-      );
-      lines.push({
-        name: service?.nameValue ?? 'Serviço',
-        quantity: item.quantityValue,
-        unitPrice: item.unitPriceValue,
-        subtotal: item.subtotal,
-      });
-    }
-    for (const item of serviceOrder.productsValue) {
-      const product = await this.productRepository.findById(
-        item.productIdValue,
-      );
-      lines.push({
-        name: product?.nameValue ?? 'Produto',
-        quantity: item.quantityValue,
-        unitPrice: item.unitPriceValue,
-        subtotal: item.subtotal,
-      });
-    }
+    const lines = await buildQuoteLines(
+      serviceOrder,
+      this.serviceRepository,
+      this.productRepository,
+    );
 
     await this.mailer.sendQuote({
       to: customer.emailValue,

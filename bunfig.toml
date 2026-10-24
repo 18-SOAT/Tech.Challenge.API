@@ -1,4 +1,8 @@
 [test]
+# Testes de integração (test/integration/) precisam de Postgres: ficam fora do
+# `bun test` (pre-push e CI rápidos, sem Docker). Rodam com `bun run test:integration`,
+# que sobrescreve este padrão pela linha de comando.
+pathIgnorePatterns = ["test/integration/**"]
 # Cobertura: mínimo de 80% de linhas (requisito do Tech Challenge), checado POR ARQUIVO.
 # `functions = 0` explícito: omitido, o Bun usa o mesmo valor de `lines`, e arquivos
 # com 1–2 funções distorcem (ex: id-generator.ts aparece com 50% de funções e 100% de linhas).

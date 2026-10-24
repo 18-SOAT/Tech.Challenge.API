@@ -15,13 +15,13 @@ export interface ServiceOrderActor {
   role: EmployeeRole;
 }
 
-const TERMINAL_STATUSES: readonly ServiceOrderStatus[] = [
+export const TERMINAL_STATUSES: readonly ServiceOrderStatus[] = [
   ServiceOrderStatus.FINISHED,
   ServiceOrderStatus.REJECTED,
 ];
 
 // Raiz do agregado: itens e histórico só mudam por aqui. Nasce como orçamento
-// (IN_DIAGNOSIS) e, aprovada (#12), vira a OS executada. Toda transição de status
+// (IN_DIAGNOSIS) e, aprovada, vira a OS executada. Toda transição de status
 // passa por `transitionTo`, que grava a linha do histórico.
 export class ServiceOrder {
   private constructor(
@@ -30,12 +30,16 @@ export class ServiceOrder {
     private assigneeId: string | null,
     private status: ServiceOrderStatus,
     private readonly description: string | null,
-    private readonly approvedAmount: Money | null,
-    private readonly approvedAt: Date | null,
+    private approvedAmount: Money | null,
+    private approvedAt: Date | null,
     private readonly createdAt: Date,
     private readonly services: ServiceItem[],
     private readonly products: ProductItem[],
     private readonly history: ServiceOrderStatusHistory[],
+    // Status com que o agregado foi lido do banco (null = ainda não gravado). O
+    // save() só grava se o banco continua nesse status: lock otimista, que barra
+    // duas transições simultâneas (ex: finalizar duas vezes) sem travar a linha.
+    private readonly loadedStatus: ServiceOrderStatus | null,
   ) {}
 
   // "OS criada" (Em diagnóstico): a primeira da Ordem ou um reparo adicional.
@@ -61,6 +65,7 @@ export class ServiceOrder {
           changedById: input.createdById,
         }),
       ],
+      null,
     );
   }
 
@@ -91,6 +96,7 @@ export class ServiceOrder {
       [...props.services],
       [...props.products],
       [...props.history],
+      props.status,
     );
   }
 
@@ -193,6 +199,30 @@ export class ServiceOrder {
     this.transitionTo(ServiceOrderStatus.AWAITING_APPROVAL, changedById);
   }
 
+  // "Orçamento aprovado" (Em execução): o total vira o valor aprovado, congelado —
+  // mudar o catálogo ou os itens depois não altera o que o cliente aceitou. A baixa
+  // de estoque e o início da Ordem são do use case, na mesma transação.
+  approve(changedById: string | null): void {
+    this.assertAwaitingApproval();
+    this.approvedAmount = this.total;
+    this.approvedAt = new Date();
+    this.transitionTo(ServiceOrderStatus.IN_EXECUTION, changedById);
+  }
+
+  // "Orçamento rejeitado": status terminal, nada é executado nem baixado.
+  reject(changedById: string | null): void {
+    this.assertAwaitingApproval();
+    this.transitionTo(ServiceOrderStatus.REJECTED, changedById);
+  }
+
+  // "OS finalizada": fecha o tempo de execução (o histórico guarda o instante).
+  finish(changedById: string): void {
+    if (this.status !== ServiceOrderStatus.IN_EXECUTION) {
+      throw ServiceOrderError.notInExecution();
+    }
+    this.transitionTo(ServiceOrderStatus.FINISHED, changedById);
+  }
+
   private transitionTo(
     status: ServiceOrderStatus,
     changedById: string | null,
@@ -215,6 +245,12 @@ export class ServiceOrder {
   private assertEditable(): void {
     if (this.status !== ServiceOrderStatus.IN_DIAGNOSIS) {
       throw ServiceOrderError.notInDiagnosis();
+    }
+  }
+
+  private assertAwaitingApproval(): void {
+    if (this.status !== ServiceOrderStatus.AWAITING_APPROVAL) {
+      throw ServiceOrderError.notAwaitingApproval();
     }
   }
 
@@ -243,6 +279,10 @@ export class ServiceOrder {
 
   get idValue(): string {
     return this.id;
+  }
+
+  get loadedStatusValue(): ServiceOrderStatus | null {
+    return this.loadedStatus;
   }
 
   get orderIdValue(): string {

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'bun:test';
+import { EmployeeRole } from '../../../employee/domain/enums/employee-role.enum.js';
 import { OrderStatus } from '../enums/order-status.enum.js';
+import { ServiceOrderStatus } from '../enums/service-order-status.enum.js';
 import { OrderErrorCode } from '../errors/order.error.js';
 import { Order } from './order.entity.js';
 
@@ -59,5 +61,96 @@ describe('Order', () => {
         expect.objectContaining({ code: OrderErrorCode.ALREADY_DELIVERED }),
       );
     });
+  });
+
+  describe('assertQuoteCanBeDecidedBy', () => {
+    const order = restore(OrderStatus.RECEIVED);
+
+    it('o cliente dono da ordem e o ADMIN decidem', () => {
+      expect(() =>
+        order.assertQuoteCanBeDecidedBy({ customerId: 'customer-1' }),
+      ).not.toThrow();
+      expect(() =>
+        order.assertQuoteCanBeDecidedBy({
+          employeeId: 'admin-1',
+          role: EmployeeRole.ADMIN,
+        }),
+      ).not.toThrow();
+    });
+
+    it('outro cliente e o MECHANIC não decidem', () => {
+      const forbidden = expect.objectContaining({
+        code: OrderErrorCode.QUOTE_DECISION_FORBIDDEN,
+      });
+      expect(() =>
+        order.assertQuoteCanBeDecidedBy({ customerId: 'customer-2' }),
+      ).toThrow(forbidden);
+      expect(() =>
+        order.assertQuoteCanBeDecidedBy({
+          employeeId: 'mechanic-1',
+          role: EmployeeRole.MECHANIC,
+        }),
+      ).toThrow(forbidden);
+    });
+  });
+
+  describe('start', () => {
+    it.each([OrderStatus.RECEIVED, OrderStatus.IN_PROGRESS])(
+      'de %s fica Em andamento',
+      (status) => {
+        const order = restore(status);
+        order.start();
+        expect(order.statusValue).toBe(OrderStatus.IN_PROGRESS);
+      },
+    );
+
+    it('recusa depois da entrega', () => {
+      expect(() => restore(OrderStatus.DELIVERED).start()).toThrow(
+        expect.objectContaining({ code: OrderErrorCode.ALREADY_DELIVERED }),
+      );
+    });
+  });
+
+  describe('deliver', () => {
+    it('entrega com todas as OS encerradas e grava a data', () => {
+      const order = restore(OrderStatus.IN_PROGRESS);
+
+      order.deliver([ServiceOrderStatus.FINISHED, ServiceOrderStatus.REJECTED]);
+
+      expect(order.statusValue).toBe(OrderStatus.DELIVERED);
+      expect(order.deliveredAtValue).toBeInstanceOf(Date);
+    });
+
+    it('cliente rejeitou tudo: de Recebida direto para Entregue', () => {
+      const order = restore(OrderStatus.RECEIVED);
+      order.deliver([ServiceOrderStatus.REJECTED]);
+      expect(order.statusValue).toBe(OrderStatus.DELIVERED);
+    });
+
+    it.each([
+      ServiceOrderStatus.IN_DIAGNOSIS,
+      ServiceOrderStatus.AWAITING_APPROVAL,
+      ServiceOrderStatus.IN_EXECUTION,
+    ])('recusa com OS ainda em %s', (open) => {
+      const order = restore(OrderStatus.IN_PROGRESS);
+      expect(() => order.deliver([ServiceOrderStatus.FINISHED, open])).toThrow(
+        expect.objectContaining({
+          code: OrderErrorCode.HAS_OPEN_SERVICE_ORDERS,
+        }),
+      );
+      expect(order.statusValue).toBe(OrderStatus.IN_PROGRESS);
+    });
+
+    it('não entrega duas vezes', () => {
+      expect(() => restore(OrderStatus.DELIVERED).deliver([])).toThrow(
+        expect.objectContaining({ code: OrderErrorCode.ALREADY_DELIVERED }),
+      );
+    });
+  });
+
+  it('belongsTo: só o cliente da ordem', () => {
+    const order = restore(OrderStatus.RECEIVED);
+    expect(order.belongsTo('customer-1')).toBeTrue();
+    expect(order.belongsTo('customer-2')).toBeFalse();
   });
 });

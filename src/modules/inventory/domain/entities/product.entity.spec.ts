@@ -180,6 +180,39 @@ describe('Product', () => {
     });
   });
 
+  describe('withdraw', () => {
+    it('baixa as unidades e devolve a movimentação OUT ligada à OS', () => {
+      const product = withStock(5);
+
+      const movement = product.withdraw(2, 'so-1');
+
+      expect(product.stockQuantityValue).toBe(3);
+      expect(movement.typeValue).toBe(StockMovementType.OUT);
+      expect(movement.quantityValue).toBe(2);
+      expect(movement.delta).toBe(-2);
+      expect(movement.serviceOrderIdValue).toBe('so-1');
+      expect(movement.reasonValue).toBeNull();
+    });
+
+    it('zera o saldo, mas não deixa negativo', () => {
+      const product = withStock(2);
+
+      product.withdraw(2, 'so-1');
+      expect(product.stockQuantityValue).toBe(0);
+
+      expect(() => product.withdraw(1, 'so-1')).toThrow(
+        expect.objectContaining({ code: ProductErrorCode.INSUFFICIENT_STOCK }),
+      );
+      expect(product.stockQuantityValue).toBe(0);
+    });
+
+    it.each([0, -1, 1.5])('rejeita quantidade %p', (quantity) => {
+      expect(() => withStock(5).withdraw(quantity, 'so-1')).toThrow(
+        expect.objectContaining({ code: ProductErrorCode.INVALID_QUANTITY }),
+      );
+    });
+  });
+
   describe('adjust', () => {
     it('aplica o delta com sinal e devolve a movimentação ADJUSTMENT', () => {
       const product = withStock(10);

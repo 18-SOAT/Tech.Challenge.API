@@ -11,6 +11,9 @@ export enum ServiceOrderErrorCode {
   NO_ASSIGNEE = 'SERVICE_ORDER_NO_ASSIGNEE',
   EMPTY_QUOTE = 'SERVICE_ORDER_EMPTY_QUOTE',
   NOT_ASSIGNED_TO_YOU = 'SERVICE_ORDER_NOT_ASSIGNED_TO_YOU',
+  NOT_AWAITING_APPROVAL = 'SERVICE_ORDER_NOT_AWAITING_APPROVAL',
+  NOT_IN_EXECUTION = 'SERVICE_ORDER_NOT_IN_EXECUTION',
+  CONCURRENT_UPDATE = 'SERVICE_ORDER_CONCURRENT_UPDATE',
 }
 
 export class ServiceOrderError extends DomainError {
@@ -88,6 +91,27 @@ export class ServiceOrderError extends DomainError {
     return new ServiceOrderError(
       ServiceOrderErrorCode.NOT_ASSIGNED_TO_YOU,
       'Esta OS está atribuída a outro mecânico.',
+    );
+  }
+
+  static notInExecution(): ServiceOrderError {
+    return new ServiceOrderError(
+      ServiceOrderErrorCode.NOT_IN_EXECUTION,
+      'Só uma OS em execução pode ser finalizada.',
+    );
+  }
+
+  static concurrentUpdate(): ServiceOrderError {
+    return new ServiceOrderError(
+      ServiceOrderErrorCode.CONCURRENT_UPDATE,
+      'A OS foi alterada por outra operação ao mesmo tempo. Consulte-a de novo e repita.',
+    );
+  }
+
+  static notAwaitingApproval(): ServiceOrderError {
+    return new ServiceOrderError(
+      ServiceOrderErrorCode.NOT_AWAITING_APPROVAL,
+      'O orçamento desta OS não está aguardando aprovação.',
     );
   }
 }
