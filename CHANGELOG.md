@@ -1,5 +1,15 @@
 # tech-challenge-api
 
+## 2.3.0
+
+### Minor Changes
+
+- bf2ff4d: Melhoria: adiciona a aprovação e a rejeição do orçamento (POST /service-orders/:id/approve e /reject), pelo cliente dono da ordem ou por um ADMIN registrando a decisão. Aprovar congela o valor, passa a OS para IN_EXECUTION, baixa as peças do estoque e coloca a ordem em andamento numa única transação; com saldo insuficiente nada é gravado e a OS continua aguardando aprovação. Também adiciona os testes de integração contra Postgres real (bun run test:integration)
+- a9ec030: Melhoria: adiciona a criação da OS com orçamento automático. O ADMIN abre a ordem pelo CPF/CNPJ e pela placa (POST /orders, com os serviços pedidos no balcão) e atribui o mecânico (PATCH /service-orders/:id/assignee). O mecânico responsável (ou um ADMIN) inclui serviços e peças com o preço congelado do catálogo, corrige ou remove itens e conclui o diagnóstico (POST /service-orders/:id/complete-diagnosis), que gera o orçamento em AWAITING_APPROVAL e o envia ao e-mail do cliente. Também inclui o reparo adicional (POST /orders/:id/service-orders) e o detalhe da OS (GET /service-orders/:id)
+- 3f5757c: Melhoria: adiciona a finalização da OS pelo mecânico responsável (POST /service-orders/:id/finish), a entrega do veículo pelo ADMIN (POST /orders/:id/deliver, só com todas as OS finalizadas ou rejeitadas) e a consulta do andamento pelo cliente (GET /me/orders e GET /me/orders/:id), com os status do enunciado calculados a partir da Ordem e das OS e o orçamento item a item. Transições simultâneas da mesma OS passam a ser barradas com 409 (lock otimista pelo status), e a entrega e o reparo adicional travam a Ordem para nunca sobrar OS aberta num veículo entregue
+- 1422cfc: Melhoria: adiciona a gestão da equipe pelo ADMIN (POST/QUERY /employees, GET /employees/:id e PATCH /employees/:id/role): o funcionário cadastrado recebe por e-mail o link para definir a senha, e o papel pode ser alterado desde que sempre reste ao menos um ADMIN; o seed passa a criar também um MECHANIC de demonstração
+- ab79007: Melhoria: adiciona o primeiro acesso do cliente cadastrado no balcão (POST /auth/first-access, por CPF/CNPJ) e a redefinição de senha (POST /auth/password-reset), ambos com link de acesso enviado por e-mail (Mailpit no docker compose) e resposta sempre igual, com ou sem cadastro; o link (POST /auth/set-password) tem validade curta, vale uma vez e não é aceito como token de sessão
+
 ## 2.2.0
 
 ### Minor Changes
