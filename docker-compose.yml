@@ -70,6 +70,11 @@ services:
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASS: ${SMTP_PASS:-}
       MAIL_FROM: ${MAIL_FROM:-Oficina <nao-responda@oficina.local>}
+      # Segurança HTTP (ver docs/code/infra/security.md). CORS vazio = nenhuma origem.
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-10}
+      RATE_LIMIT_WINDOW_SECONDS: ${RATE_LIMIT_WINDOW_SECONDS:-60}
+      TRUST_PROXY: ${TRUST_PROXY:-false}
       PORT: 3000
     ports:
       - "${PORT:-3000}:3000"
