@@ -6,6 +6,7 @@ import { makeInventoryContainer } from './modules/inventory/inventory.container.
 import { makeServiceOrderContainer } from './modules/service-order/service-order.container.js';
 import { makeVehicleContainer } from './modules/vehicle/vehicle.container.js';
 import { readEnv } from './shared/infrastructure/config/env.js';
+import { InMemoryRateLimiter } from './shared/infrastructure/rate-limit/in-memory-rate-limiter.js';
 import { makeSharedContainer } from './shared/shared.container.js';
 
 // Único ponto que lê o ambiente, monta os containers reais e sobe o servidor.
@@ -13,6 +14,16 @@ const env = readEnv();
 const shared = makeSharedContainer(env);
 
 const app = createApp({
+  http: {
+    corsOrigins: env.CORS_ORIGINS,
+    rateLimit: {
+      limiter: new InMemoryRateLimiter({
+        max: env.RATE_LIMIT_MAX,
+        windowMs: env.RATE_LIMIT_WINDOW_SECONDS * 1000,
+      }),
+      trustProxy: env.TRUST_PROXY,
+    },
+  },
   tokenService: shared.tokenService,
   databaseHealth: shared.databaseHealth,
   auth: makeAuthContainer(shared),

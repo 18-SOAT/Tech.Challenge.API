@@ -1,4 +1,5 @@
 import { openapi } from '@elysia/openapi';
+import { cors } from '@elysiajs/cors';
 import { Elysia } from 'elysia';
 import pkg from '../package.json' with { type: 'json' };
 import type { AuthUseCases } from './modules/auth/auth.container.js';
@@ -25,9 +26,21 @@ import type { TokenService } from './shared/infrastructure/jwt/token-service.por
 import { authPlugin } from './shared/presentation/auth/auth.plugin.js';
 import { healthHandler } from './shared/presentation/health/health.handler.js';
 import { errorHandler } from './shared/presentation/http/error-handler.plugin.js';
+import type { RateLimitConfig } from './shared/presentation/http/rate-limit.plugin.js';
+import {
+  DOCS_PATH,
+  securityHeaders,
+} from './shared/presentation/http/security-headers.plugin.js';
 import './shared/presentation/http/formats.js';
 
+// Camada HTTP: quem o navegador deixa chamar (CORS) e o rate limit das rotas de auth.
+export interface HttpConfig {
+  corsOrigins: string[];
+  rateLimit: RateLimitConfig;
+}
+
 export interface AppDeps {
+  http: HttpConfig;
   tokenService: TokenService;
   databaseHealth: DatabaseHealthCheck;
   auth: AuthUseCases;
@@ -40,14 +53,30 @@ export interface AppDeps {
 
 // Monta a aplicação sem subir servidor: o server.ts passa os containers reais e o
 // e2e passa fakes (sem banco). Ordem importa — hooks só valem pras rotas
-// registradas depois deles: errorHandler primeiro, depois docs, depois as rotas.
+// registradas depois deles: errorHandler primeiro, depois headers de segurança e
+// CORS (valem para tudo, inclusive a doc), depois docs, depois as rotas.
 export function createApp(deps: AppDeps) {
   const auth = authPlugin(deps.tokenService);
 
   return new Elysia()
     .use(errorHandler)
+    .use(securityHeaders)
+    .use(
+      cors({
+        // Lista vazia = nenhuma origem: o navegador de outro site é barrado.
+        origin: deps.http.corsOrigins,
+        // QUERY é o método das listagens: fora da lista, o preflight barra todas.
+        methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'QUERY'],
+        allowedHeaders: ['Content-Type', 'Authorization'],
+        exposeHeaders: ['Retry-After'],
+        // Token vai no header Authorization, não em cookie: sem credentials.
+        credentials: false,
+        maxAge: 600,
+      }),
+    )
     .use(
       openapi({
+        path: DOCS_PATH,
         documentation: {
           info: {
             title: 'Tech Challenge API — Oficina Mecânica',
@@ -109,7 +138,7 @@ export function createApp(deps: AppDeps) {
     )
     .use(auth)
     .use(healthHandler(deps.databaseHealth))
-    .use(authRoutes(deps.auth, auth))
+    .use(authRoutes(deps.auth, auth, deps.http.rateLimit))
     .use(employeeRoutes(deps.employees, auth))
     .use(customerRoutes(deps.customers, auth))
     .use(vehicleRoutes(deps.vehicles, auth))
