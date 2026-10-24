@@ -109,6 +109,17 @@ export class ServiceOrder {
     }
   }
 
+  // A mesma regra nas consultas (listagem, fila): o MECHANIC só enxerga as OS dele,
+  // seja qual for o filtro pedido; o ADMIN vê todas e filtra por quem quiser.
+  static assigneeScopeFor(
+    actor: ServiceOrderActor,
+    requestedAssigneeId?: string,
+  ): string | undefined {
+    return actor.role === EmployeeRole.ADMIN
+      ? requestedAssigneeId
+      : actor.employeeId;
+  }
+
   // "Mecânico atribuído". Pode trocar de responsável enquanto a OS não fechou.
   assign(mechanic: { id: string; role: EmployeeRole }): void {
     this.assertNotClosed();
@@ -275,6 +286,22 @@ export class ServiceOrder {
 
   get isClosed(): boolean {
     return TERMINAL_STATUSES.includes(this.status);
+  }
+
+  // Tempo de execução em ms: do "Orçamento aprovado" (IN_EXECUTION) à "OS
+  // finalizada" (FINISHED), lidos do histórico. null enquanto não finalizou.
+  get executionTime(): number | null {
+    const startedAt = this.changedAtOf(ServiceOrderStatus.IN_EXECUTION);
+    const finishedAt = this.changedAtOf(ServiceOrderStatus.FINISHED);
+    if (!startedAt || !finishedAt) return null;
+    return finishedAt.getTime() - startedAt.getTime();
+  }
+
+  private changedAtOf(status: ServiceOrderStatus): Date | null {
+    return (
+      this.history.find((row) => row.statusValue === status)?.changedAtValue ??
+      null
+    );
   }
 
   get idValue(): string {
