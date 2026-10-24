@@ -76,7 +76,9 @@ Os contextos se referenciam **só por ID**. Uma OS guarda `productId` e `service
 | Baixa de estoque | `StockMovement` `OUT` | Saída das peças/insumos de uma OS, feita na aprovação do orçamento. |
 | Ordem / Estadia | `Order` | Período do veículo na oficina, da chegada à entrega. Agrupa todas as OS da visita e tem número legível (`number`). Aberta pelo CPF/CNPJ do cliente e pela placa; um veículo só tem uma Ordem aberta (não entregue) por vez. |
 | Ordem de Serviço (OS) | `ServiceOrder` | Unidade de trabalho com serviços e peças. Nasce como orçamento e, aprovada, vira a OS executada. |
-| Fila de OS | read model | OS abertas ordenadas por status e data de chegada da ordem. É o que o mecânico consulta para saber o que fazer primeiro. |
+| Fila de OS | read model (`SERVICE_ORDER_QUEUE_PRIORITY`) | OS abertas na ordem de atendimento: em execução, aguardando aprovação e em diagnóstico; dentro do status, a Ordem que chegou antes. É o que o mecânico consulta para saber o que fazer primeiro (ver [Fila de OS](#fila-de-os)). |
+| Listagem de OS | read model | Consulta administrativa das OS por status, mecânico, cliente e período de criação. O mecânico só vê as atribuídas a ele. |
+| Detalhe da Ordem | read model | A Ordem com todas as OS da estadia, o andamento e os totais orçado (soma dos orçamentos) e aprovado (soma dos valores congelados). |
 | Orçamento | `ServiceOrder` em `AWAITING_APPROVAL` | Soma dos itens da OS, enviada ao cliente por e-mail para aprovar ou rejeitar. |
 | Item de serviço / de produto | `ServiceItem` / `ProductItem` | Linha da OS com quantidade e **preço unitário congelado** no momento em que o item entra (snapshot). Incluir o mesmo item de novo soma na quantidade; durante o diagnóstico, a quantidade pode ser corrigida e o item removido. |
 | Valor aprovado | `ServiceOrder.approvedAmount` | Total do orçamento congelado na aprovação. Mudança posterior no catálogo não altera a OS. |
@@ -242,11 +244,19 @@ O saldo é checado duas vezes: `Product.withdraw()` recusa com o saldo lido (err
 - **Atendente (ADMIN)**, registrando a decisão que o cliente deu no balcão ou por telefone; o histórico guarda quem registrou.
 - Qualquer outro (outro cliente, mecânico) recebe 403 — antes de qualquer checagem de status, para não revelar o andamento da OS de outro cliente.
 
+### Fila de OS
+
+- **Prioridade:** `IN_EXECUTION` → `AWAITING_APPROVAL` → `IN_DIAGNOSIS`. A OS aprovada vem primeiro porque o cliente já disse "sim" e está esperando. É o contrário do andamento do cliente, que mostra primeiro o que depende dele (aprovar).
+- **Desempate:** a Ordem que chegou antes (`Order.receivedAt`).
+- **Fora da fila:** OS terminais (`FINISHED`, `REJECTED`).
+- **Quem vê:** o mecânico vê só as OS atribuídas a ele, a mesma regra de quem trabalha na OS (`ServiceOrder.assigneeScopeFor`). O atendente vê a fila da oficina ou a de um mecânico.
+
 ### Tempo médio de execução
 
-- **Por OS:** `changedAt(FINISHED) − changedAt(IN_EXECUTION)`, lidos do `ServiceOrderStatusHistory`.
+- **Por OS:** `changedAt(FINISHED) − changedAt(IN_EXECUTION)`, lidos do `ServiceOrderStatusHistory` (`ServiceOrder.executionTime`).
 - **Global:** média do tempo das OS finalizadas.
-- **Por serviço do catálogo:** média do tempo das OS finalizadas que contêm aquele serviço. É uma aproximação, porque uma OS com vários serviços conta para cada um deles.
+- **Por serviço do catálogo:** média do tempo das OS finalizadas que contêm aquele serviço. É uma aproximação, porque uma OS com vários serviços conta para cada um deles. Vem junto da duração estimada do catálogo, para comparar o real com o previsto.
+- **Período:** o da finalização (`FINISHED` no histórico).
 
 ## Event Storming em texto
 
@@ -342,6 +352,8 @@ Cada elemento do modelo e o arquivo onde ele vive.
 | `ServiceOrderStatusHistory` | Entidade | `src/modules/service-order/domain/entities/service-order-status-history.entity.ts` |
 | `OrderStatus`, `ServiceOrderStatus`, `ProgressStage` | Enums | `src/modules/service-order/domain/enums/` |
 | Andamento (status do enunciado) | Domain service | `src/modules/service-order/domain/services/order-progress.ts` |
+| Prioridade da Fila de OS | Domain service (constante) | `src/modules/service-order/domain/services/service-order-queue.ts` |
+| Tempo médio de execução | Domain service | `src/modules/service-order/domain/services/execution-time-report.ts` |
 | Entrega atômica (Ordem travada + recontagem das OS) | Port + adapter | `src/modules/service-order/domain/ports/order-delivery.repository.ts`, `src/modules/service-order/infrastructure/persistence/prisma-order-delivery.repository.ts` |
 | Abertura atômica (Order + 1ª ServiceOrder + histórico) | Port + adapter | `src/modules/service-order/domain/ports/order-opening.repository.ts` |
 | Persistência do agregado OS (itens sincronizados + histórico append-only) | Repository | `src/modules/service-order/domain/repositories/service-order.repository.ts` |
@@ -355,6 +367,7 @@ Cada elemento do modelo e o arquivo onde ele vive.
 | Primeiro acesso, redefinição, definir senha | Use cases | `src/modules/auth/application/use-cases/request-first-access.use-case.ts`, `request-password-reset.use-case.ts`, `set-password.use-case.ts` |
 | Cadastrar funcionário, alterar papel | Use cases | `src/modules/employee/application/use-cases/create-employee.use-case.ts`, `change-employee-role.use-case.ts` |
 | Abrir ordem, reparo adicional, atribuir mecânico, incluir/alterar/remover item, concluir diagnóstico, detalhe da OS, aprovar/rejeitar orçamento | Use cases | `src/modules/service-order/application/use-cases/` (`open-order`, `open-additional-service-order`, `assign-mechanic`, `add-service-item`, `add-product-item`, `change-item-quantity`, `remove-item`, `complete-diagnosis`, `find-service-order-by-id`, `approve-quote`, `reject-quote`, `finish-service-order`, `deliver-order`) |
+| Listagem e fila de OS, listagem e detalhe da Ordem, tempo médio | Use cases | `src/modules/service-order/application/use-cases/` (`list-service-orders`, `list-service-order-queue`, `list-orders`, `find-order-by-id`, `get-execution-time`) |
 | Consultar andamento (cliente) | Use cases + rotas `/me` | `src/modules/service-order/application/use-cases/list-my-orders.use-case.ts`, `find-my-order.use-case.ts`; `src/modules/service-order/presentation/controllers/me/` |
 | E-mail do orçamento | Port + Mailer | `src/modules/service-order/domain/ports/service-order.mailer.ts`, `src/modules/service-order/infrastructure/mailers/service-order.mailer.ts` |
 | Envio de e-mail (link de acesso, orçamento) | Port + adapter (SMTP) | `src/shared/infrastructure/email/email-sender.port.ts` |
