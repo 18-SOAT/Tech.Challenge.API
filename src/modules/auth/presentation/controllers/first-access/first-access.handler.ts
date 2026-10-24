@@ -20,7 +20,7 @@ export const firstAccessHandler = (
     },
     {
       body: FirstAccessRequestSchema,
-      response: { 202: Envelope(t.Null()), 400: ApiError },
+      response: { 202: Envelope(t.Null()), 400: ApiError, 429: ApiError },
       detail: {
         summary: 'Solicita o primeiro acesso do cliente cadastrado no balcão',
         description:

@@ -19,7 +19,7 @@ export const passwordResetHandler = (
     },
     {
       body: PasswordResetRequestSchema,
-      response: { 202: Envelope(t.Null()), 400: ApiError },
+      response: { 202: Envelope(t.Null()), 400: ApiError, 429: ApiError },
       detail: {
         summary: 'Solicita a redefinição de senha',
         description:
