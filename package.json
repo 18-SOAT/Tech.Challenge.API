@@ -61,5 +61,9 @@
     "lint-staged": "^17.5.0",
     "prisma": "^7.10.0",
     "typescript": "^6.0.2"
+  },
+  "overrides": {
+    "deepmerge-ts": "^8.0.0",
+    "mysql2": "^3.23.1"
   }
 }

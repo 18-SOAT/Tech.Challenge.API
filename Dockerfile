@@ -56,4 +56,9 @@ COPY --from=deps /app/src/generated ./src/generated
 # o atacante não é root dentro do container.
 USER bun
 EXPOSE 3000
+# Na imagem (e não só no compose): o health check vai junto aonde a imagem rodar.
+# A imagem slim não tem curl: o próprio Bun faz a requisição. O /health responde
+# 503 quando o banco cai, então o container fica unhealthy junto.
+HEALTHCHECK --interval=10s --timeout=5s --retries=3 --start-period=10s \
+  CMD ["bun", "-e", "fetch('http://localhost:3000/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
 CMD ["bun", "src/server.ts"]
