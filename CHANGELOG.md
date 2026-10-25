@@ -1,5 +1,12 @@
 # tech-challenge-api
 
+## 2.4.0
+
+### Minor Changes
+
+- 04d0277: Melhoria: adiciona a gestão administrativa das Ordens e das OS: listagem de OS com filtros por status, mecânico, cliente e período (QUERY /service-orders), a Fila de OS na ordem de atendimento — em execução, aguardando aprovação e em diagnóstico, pela chegada da Ordem (QUERY /service-orders/queue) —, a listagem e o detalhe da Ordem com as OS, o andamento e os totais orçado e aprovado (QUERY /orders e GET /orders/:id) e o tempo médio de execução, global e por serviço, comparado à duração estimada do catálogo (QUERY /service-orders/execution-time). O MECHANIC só vê as OS atribuídas a ele.
+- 1784d77: Melhoria: endurece a camada HTTP. As rotas públicas de auth (login, cadastro, primeiro acesso, redefinição e definição de senha) ganham rate limit configurável por env (RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_SECONDS), com 429 e Retry-After; no login e na redefinição a contagem também é por e-mail. Toda resposta passa a levar headers de segurança (CSP, nosniff, X-Frame-Options, HSTS, Referrer-Policy, no-store), com uma CSP própria para a documentação Scalar em /openapi. CORS só para as origens de CORS_ORIGINS (vazio = nenhuma), com o método QUERY liberado. O env é validado no boot: JWT_SECRET com no mínimo 32 caracteres, portas, URL e as variáveis novas falham alto em vez de virar padrão em silêncio.
+
 ## 2.3.0
 
 ### Minor Changes
