@@ -1,4 +1,5 @@
 import type { UseCase } from '../../../../shared/application/use-case.interface.js';
+import { Email } from '../../../../shared/domain/value-objects/email.vo.js';
 import type {
   AuthTokenPayload,
   TokenService,
@@ -32,9 +33,10 @@ export class LoginUseCase implements UseCase<LoginInput, LoginOutput> {
   ) {}
 
   async execute(input: LoginInput): Promise<LoginOutput> {
-    const user = await this.userRepository.findByEmail(
-      input.email.trim().toLowerCase(),
-    );
+    // Qualquer alias da mesma caixa acha o login (e-mail canônico). E-mail
+    // malformado segue o caminho de "não existe": mesmo 401, mesmo custo.
+    const email = this.parseEmail(input.email);
+    const user = email ? await this.userRepository.findByEmail(email) : null;
 
     if (!user) {
       // Mesmo custo de um login com e-mail válido: sem isso, a resposta mais rápida
@@ -61,6 +63,14 @@ export class LoginUseCase implements UseCase<LoginInput, LoginOutput> {
 
     const accessToken = await this.tokenService.sign(claims);
     return { accessToken, user: claims };
+  }
+
+  private parseEmail(raw: string): Email | null {
+    try {
+      return Email.create(raw);
+    } catch {
+      return null;
+    }
   }
 
   private getDummyHash(): Promise<string> {

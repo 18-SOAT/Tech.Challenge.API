@@ -20,6 +20,7 @@ export class UserMapper {
     return {
       id: entity.idValue,
       email: entity.emailValue,
+      emailCanonical: entity.emailCanonical,
       hashedPassword: entity.hashedPassword,
       type: entity.typeValue,
       active: entity.isActive,

@@ -8,7 +8,7 @@ import { createPrismaClient } from '../src/shared/infrastructure/prisma/client.j
 
 // Seed de demonstração: um ADMIN para autenticar nas rotas administrativas e um
 // MECHANIC para demonstrar a divisão de papéis (403 nas rotas de escrita).
-// Idempotente: se o e-mail já existe, não mexe em nada (nem na senha) — pode rodar a
+// Idempotente: se o e-mail (canônico) já existe, não mexe em nada (nem na senha) — pode rodar a
 // cada `docker compose up` sem duplicar. Roda via `prisma db seed` (prisma.config.ts).
 // As credenciais padrão são públicas de propósito (README); troque via env fora da demo.
 const demoEmployees = [
@@ -41,7 +41,7 @@ const hasher = new BcryptPasswordHasher();
 try {
   for (const { email, password, name, role } of demoEmployees) {
     const existing = await prisma.user.findUnique({
-      where: { email: email.value },
+      where: { emailCanonical: email.canonical },
     });
     if (existing) {
       console.log(`🌱 Seed: ${email.value} já existe, nada a fazer.`);
@@ -54,6 +54,7 @@ try {
       data: {
         id: IdGenerator.generate(),
         email: email.value,
+        emailCanonical: email.canonical,
         hashedPassword: await hasher.hash(password.value),
         type: UserType.EMPLOYEE,
         employee: {

@@ -73,6 +73,27 @@ describe('LoginUseCase', () => {
     });
   });
 
+  it('entra com qualquer alias do próprio e-mail (e-mail canônico)', async () => {
+    users.items.push(makeUser({ email: 'joaosilva@gmail.com' }));
+    customers.items.push(makeCustomer('user-1'));
+
+    const { user } = await useCase.execute({
+      email: 'J.oao.Silva+oficina@googlemail.com',
+      password: 'senha-forte',
+    });
+
+    expect(user.email).toBe('joaosilva@gmail.com');
+  });
+
+  it('e-mail malformado: mesmo 401 e mesmo custo do e-mail inexistente', async () => {
+    await expect(
+      useCase.execute({ email: 'nao-e-email', password: 'qualquer' }),
+    ).rejects.toThrow(
+      expect.objectContaining({ code: AuthErrorCode.INVALID_CREDENTIALS }),
+    );
+    expect(hasher.compareCalls).toBe(1);
+  });
+
   it('rejeita senha errada com mensagem genérica', async () => {
     users.items.push(makeUser());
     customers.items.push(makeCustomer('user-1'));

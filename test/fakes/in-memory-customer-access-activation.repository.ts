@@ -21,7 +21,9 @@ export class InMemoryCustomerAccessActivationRepository
 
   async activate(user: User, customer: Customer): Promise<void> {
     if (this.raceLost) throw AuthError.accessLinkInvalid();
-    if (await this.users.findByEmail(user.emailValue)) {
+    if (
+      this.users.items.some((u) => u.emailCanonical === user.emailCanonical)
+    ) {
       throw UserError.emailAlreadyInUse();
     }
     this.users.items.push(user);

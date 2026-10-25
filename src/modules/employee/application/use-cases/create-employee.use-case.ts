@@ -35,7 +35,7 @@ export class CreateEmployeeUseCase
 
   async execute(input: CreateEmployeeInput): Promise<Employee> {
     const email = Email.create(input.email);
-    if (await this.userRepository.findByEmail(email.value)) {
+    if (await this.userRepository.findByEmail(email)) {
       throw UserError.emailAlreadyInUse();
     }
 

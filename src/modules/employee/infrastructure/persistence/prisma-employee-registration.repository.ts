@@ -1,5 +1,5 @@
 import type { PrismaClient } from '../../../../shared/infrastructure/prisma/client.js';
-import { uniqueViolationFields } from '../../../../shared/infrastructure/prisma/prisma-errors.js';
+import { isEmailUniqueViolation } from '../../../../shared/infrastructure/prisma/prisma-errors.js';
 import type { User } from '../../../user/domain/entities/user.entity.js';
 import { UserError } from '../../../user/domain/errors/user.error.js';
 import { UserMapper } from '../../../user/infrastructure/persistence/user.mapper.js';
@@ -23,7 +23,7 @@ export class PrismaEmployeeRegistrationRepository
       ]);
     } catch (error) {
       // Corrida com o check de e-mail do use case: o banco é a última barreira.
-      if (uniqueViolationFields(error)?.includes('email')) {
+      if (isEmailUniqueViolation(error)) {
         throw UserError.emailAlreadyInUse();
       }
       throw error;

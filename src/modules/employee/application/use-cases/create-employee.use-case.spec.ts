@@ -104,6 +104,17 @@ describe('CreateEmployeeUseCase', () => {
     expect(employees.items).toHaveLength(0);
   });
 
+  it('rejeita alias de um login existente (e-mail canônico)', async () => {
+    users.items.push(makeUser({ email: 'mariasouza@gmail.com' }));
+
+    await expect(
+      useCase.execute({ ...input, email: 'maria.souza+oficina@gmail.com' }),
+    ).rejects.toThrow(
+      expect.objectContaining({ code: UserErrorCode.EMAIL_ALREADY_IN_USE }),
+    );
+    expect(employees.items).toHaveLength(0);
+  });
+
   it('rejeita e-mail inválido', async () => {
     await expect(
       useCase.execute({ ...input, email: 'nao-e-email' }),

@@ -37,12 +37,14 @@ export async function seedWorkshop(prisma: PrismaClient): Promise<void> {
       {
         id: ADMIN_USER_ID,
         email: 'admin@oficina.com',
+        emailCanonical: 'admin@oficina.com',
         hashedPassword: 'x',
         type: 'EMPLOYEE',
       },
       {
         id: MECHANIC_USER_ID,
         email: 'mecanico@oficina.com',
+        emailCanonical: 'mecanico@oficina.com',
         hashedPassword: 'x',
         type: 'EMPLOYEE',
       },
