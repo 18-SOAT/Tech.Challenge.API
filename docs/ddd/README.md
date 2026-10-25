@@ -13,7 +13,7 @@ Os nomes vêm da [**Linguagem Ubíqua**](linguagem-ubiqua.md), que também traz 
 |---|---|---|
 | [Linguagem Ubíqua](linguagem-ubiqua.md) | Glossário, atores, bounded contexts, agregados, entidades, VOs, eventos, regras e relação com o código | — |
 | [Domain Storytelling](domain-storytelling.md) | Histórias As-Is e To-Be na linguagem pictográfica + Antes × Depois | [diagramas.pdf](diagramas.pdf) (págs. 1–6) |
-| Event Storming | Criação da OS, acompanhamento da OS, peças e insumos, acesso e equipe | [event-storming.pdf](event-storming.pdf) |
+| Event Storming | Criação da OS, acompanhamento da OS, peças e insumos, acesso e equipe, cadastros | [event-storming.pdf](event-storming.pdf) |
 | Diagramas | Subdomínios, context map, agregados, máquinas de estado | [diagramas.pdf](diagramas.pdf) (págs. 7–10) |
 
 ## 1. Domain Storytelling
@@ -41,6 +41,7 @@ As tabelas equivalentes, em texto, estão em [Linguagem Ubíqua → Event Stormi
 ![Acompanhamento da OS](event-storming/3-acompanhamento-os.svg)
 ![Peças e insumos](event-storming/4-pecas-insumos.svg)
 ![Acesso e equipe](event-storming/5-acesso-equipe.svg)
+![Cadastros](event-storming/6-cadastros.svg)
 
 ## 3. Subdomínios e Context Map
 

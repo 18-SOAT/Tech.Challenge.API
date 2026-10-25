@@ -9,7 +9,7 @@ Todos os diagramas, em ordem e com imagem, estão no [índice da documentação 
 | Documento | Fonte | Imagens | PDF |
 |---|---|---|---|
 | Domain Storytelling As-Is e To-Be | `domain-storytelling/*.egn` (egon.io) | [`domain-storytelling/`](domain-storytelling/) | [diagramas.pdf](diagramas.pdf) |
-| Event Storming (criação da OS, acompanhamento da OS, peças e insumos, acesso e equipe) | [event-storming.drawio](https://viewer.diagrams.net/?nav=1&url=https%3A%2F%2Fraw.githubusercontent.com%2F18-SOAT%2FTech.Challenge.API%2Fmain%2Fdocs%2Fddd%2Fevent-storming.drawio) | [`event-storming/`](event-storming/) | [event-storming.pdf](event-storming.pdf) |
+| Event Storming (criação da OS, acompanhamento da OS, peças e insumos, acesso e equipe, cadastros) | [event-storming.drawio](https://viewer.diagrams.net/?nav=1&url=https%3A%2F%2Fraw.githubusercontent.com%2F18-SOAT%2FTech.Challenge.API%2Fmain%2Fdocs%2Fddd%2Fevent-storming.drawio) | [`event-storming/`](event-storming/) | [event-storming.pdf](event-storming.pdf) |
 | Diagramas (subdomínios, context map, agregados, máquinas de estado) | [diagramas.drawio](https://viewer.diagrams.net/?nav=1&url=https%3A%2F%2Fraw.githubusercontent.com%2F18-SOAT%2FTech.Challenge.API%2Fmain%2Fdocs%2Fddd%2Fdiagramas.drawio) | [`diagramas/`](diagramas/) | [diagramas.pdf](diagramas.pdf) |
 | Modelo de dados | [database.drawio](../diagrams/database.drawio) | [database.svg](../diagrams/database.svg) | — |
 
@@ -322,6 +322,17 @@ Legenda: *Comando*, `Evento`, ⟶ política. A notação visual está em [event-
 | Cliente / Funcionário | *Definir senha* | `User` | `Acesso ativado` | Link expirado ou já usado ⟶ erro |
 | Atendente | *Cadastrar funcionário* | `Employee` | `Funcionário cadastrado` | ⟶ enviar link de acesso |
 | Atendente | *Alterar papel* | `Employee` | `Papel do funcionário alterado` | Só ADMIN; sempre resta um ADMIN |
+
+### 5. Cadastros (clientes e veículos)
+
+![5. Cadastros](event-storming/6-cadastros.svg)
+
+| Ator | Comando | Agregado | Evento | Política / observação |
+|---|---|---|---|---|
+| Atendente | *Alterar dados do cliente* | `Customer` | `Dados do cliente alterados` | Nome, e-mail e telefone; o documento (CPF/CNPJ) não muda, é a identidade do cliente |
+| Atendente | *Excluir cliente* | `Customer` | `Cliente excluído` | Com login ativo ⟶ erro (`Customer.assertCanBeRemoved()`); com veículos ou OS ⟶ erro (`CustomerRepository.delete()`) |
+| Atendente | *Alterar dados do veículo* | `Vehicle` | `Dados do veículo alterados` | Placa inválida ou já cadastrada ⟶ erro; a placa pode ser corrigida ou convertida para Mercosul; o dono não muda |
+| Atendente | *Excluir veículo* | `Vehicle` | `Veículo excluído` | Com ordens de serviço ⟶ erro (`VehicleRepository.delete()`) |
 
 ## Relação com o código
 
