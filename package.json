@@ -1,6 +1,6 @@
 {
   "name": "tech-challenge-api",
-  "version": "2.4.0",
+  "version": "2.4.1",
   "description": "Back-end do Tech Challenge FIAP: sistema de atendimento e execução de serviços de uma oficina mecânica",
   "author": "",
   "private": true,
