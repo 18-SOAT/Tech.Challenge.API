@@ -1,0 +1,15 @@
+# Falsos positivos do gitleaks, um por fingerprint (commit:arquivo:regra:linha).
+# Fingerprint e não pasta inteira: um segredo novo no mesmo arquivo continua sendo
+# pego. Justificativa de cada um em docs/security/relatorio-vulnerabilidades.md.
+
+# Badge público do CircleCI do template do NestJS, no README do primeiro commit
+# (projeto nestjs/nest, presente em todo starter do Nest; já removido do README).
+90dddec4ececcb0f232f1f5371d5a32247469eb2:README.md:generic-api-key:5
+
+# Senha de demonstração do MECHANIC, documentada como credencial de demo (exigência
+# do enunciado) e substituível por SEED_MECHANIC_PASSWORD.
+e96f04f3ad985e34001a436ace351ff168ccab5e:prisma/seed.ts:generic-api-key:26
+
+# Senha fictícia em teste e2e (roda com fakes, sem banco nem usuário real).
+d5eb7c451d9552fa9f2da8e04656a1a0ad41a41a:test/http-security.e2e.spec.ts:generic-api-key:88
+d5eb7c451d9552fa9f2da8e04656a1a0ad41a41a:test/http-security.e2e.spec.ts:generic-api-key:97

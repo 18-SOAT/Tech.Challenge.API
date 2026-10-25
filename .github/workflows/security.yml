@@ -1,0 +1,94 @@
+name: Security
+
+# Análise de vulnerabilidades (relatório em docs/security/relatorio-vulnerabilidades.md):
+# dependências, segredos no histórico do git e imagem Docker. Roda em todo PR, no
+# main e toda segunda-feira — vulnerabilidade nova aparece mesmo sem mudança no código.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 9 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Ferramentas baixadas das releases oficiais com versão e checksum fixos, em vez de
+# actions de terceiros: a gitleaks-action exige licença em repositório de
+# organização, e cada action a menos é código alheio a menos rodando no CI.
+env:
+  GITLEAKS_VERSION: 8.30.1
+  GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+  TRIVY_VERSION: 0.76.1
+  TRIVY_SHA256: c7cbe3137fb8a48a17574bede3dd6beb16742d1e9772929940fc90082c39d9c0
+
+jobs:
+  dependencies:
+    runs-on: ubuntu-latest
+    steps:
+      # Actions fixadas por SHA de commit (a tag pode ser movida; o SHA não).
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: .bun-version
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      # high ou critical derruba o job; moderate e low aparecem no log para triagem.
+      - name: bun audit
+        run: bun audit --audit-level=high
+
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # histórico inteiro: segredo apagado num commit continua nos anteriores
+
+      - name: Install gitleaks
+        run: |
+          curl -sSfL -o gitleaks.tar.gz \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  gitleaks.tar.gz" | sha256sum -c -
+          tar xzf gitleaks.tar.gz gitleaks
+
+      # Falsos positivos ficam no .gitleaksignore, um por fingerprint.
+      - name: gitleaks (todo o histórico)
+        run: ./gitleaks git . --log-opts="--all" --redact --verbose --no-banner
+
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install trivy
+        run: |
+          curl -sSfL -o trivy.tar.gz \
+            "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          echo "${TRIVY_SHA256}  trivy.tar.gz" | sha256sum -c -
+          tar xzf trivy.tar.gz trivy
+
+      - name: trivy config (Dockerfile)
+        run: ./trivy config --exit-code 1 --severity MEDIUM,HIGH,CRITICAL .
+
+      - name: trivy fs (lockfile, inclusive devDependencies)
+        run: ./trivy fs --scanners vuln,secret --include-dev-deps --exit-code 1 --severity HIGH,CRITICAL .
+
+      # As duas imagens que o compose sobe: a API (runtime) e o job de migrations.
+      - name: Build images
+        run: |
+          docker build --target runtime -t tech-challenge-api:runtime .
+          docker build --target migrate -t tech-challenge-api:migrate .
+
+      # --ignore-unfixed: CVE do sistema base sem correção publicada não tem ação
+      # possível aqui; o que tem correção derruba o job.
+      - name: trivy image (runtime)
+        run: ./trivy image --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed tech-challenge-api:runtime
+
+      - name: trivy image (migrate)
+        run: ./trivy image --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed tech-challenge-api:migrate
