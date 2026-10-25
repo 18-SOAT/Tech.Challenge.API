@@ -17,7 +17,12 @@ export const setPasswordHandler = (setPassword: SetPasswordUseCase) =>
     },
     {
       body: SetPasswordRequestSchema,
-      response: { 200: Envelope(t.Null()), 400: ApiError, 409: ApiError },
+      response: {
+        200: Envelope(t.Null()),
+        400: ApiError,
+        409: ApiError,
+        429: ApiError,
+      },
       detail: {
         summary: 'Define a senha pelo link de acesso',
         description:

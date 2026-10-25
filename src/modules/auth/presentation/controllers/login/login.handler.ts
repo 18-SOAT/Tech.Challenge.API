@@ -22,11 +22,12 @@ export const loginHandler = (login: LoginUseCase) =>
         200: Envelope(LoginResponseSchema),
         400: ApiError,
         401: ApiError,
+        429: ApiError,
       },
       detail: {
         summary: 'Autentica um usuário e devolve o access token',
         description:
-          '401 com mensagem única ("Credenciais inválidas.") para e-mail inexistente, senha errada ou usuário inativo.',
+          '401 com mensagem única ("Credenciais inválidas.") para e-mail inexistente, senha errada ou usuário inativo. 429: tentativas demais do mesmo IP ou para o mesmo e-mail na janela (header Retry-After).',
       },
     },
   );

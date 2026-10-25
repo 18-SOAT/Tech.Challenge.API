@@ -40,6 +40,7 @@
   ],
   "dependencies": {
     "@elysia/openapi": "^1.4.16",
+    "@elysiajs/cors": "^1.4.2",
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
     "@sinclair/typebox": "^0.34.52",

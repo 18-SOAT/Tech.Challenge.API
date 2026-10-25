@@ -18,7 +18,8 @@ export interface LoginOutput {
   user: AuthTokenPayload;
 }
 
-// TODO: rate limiting na rota de login contra força bruta.
+// Força bruta é barrada antes daqui, pelo rate limit da rota (por IP e por e-mail:
+// ver shared/presentation/http/rate-limit.plugin.ts) — é infra HTTP, não regra do login.
 export class LoginUseCase implements UseCase<LoginInput, LoginOutput> {
   // Hash descartável pra comparar quando o e-mail não existe (ver execute).
   private dummyHash?: Promise<string>;

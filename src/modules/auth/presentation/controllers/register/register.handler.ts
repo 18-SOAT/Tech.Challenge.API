@@ -22,6 +22,7 @@ export const registerHandler = (registerCustomer: RegisterCustomerUseCase) =>
         201: Envelope(UserResponseSchema),
         400: ApiError,
         409: ApiError,
+        429: ApiError,
       },
       detail: {
         summary: 'Cadastra um cliente com login',

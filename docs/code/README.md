@@ -92,6 +92,7 @@ src/
 - [Padrão de services (Port & Adapter)](infra/services-pattern.md)
 - [Email](infra/email.md)
 - [Database (Prisma)](infra/database.md)
+- [Segurança HTTP (rate limit, headers, CORS)](infra/security.md)
 
 ## Bibliotecas
 
