@@ -53,3 +53,5 @@ Plugin oficial `@elysiajs/cors`, com as origens de `CORS_ORIGINS` (lista separad
 | `TRUST_PROXY` | `false` | `true` ou `false` |
 
 Valor inválido derruba a subida com a mensagem do que corrigir. Ele nunca vira o padrão em silêncio.
+
+A análise de vulnerabilidades (dependências, segredos no histórico, Dockerfile e imagens) está em [`docs/security/relatorio-vulnerabilidades.md`](../../security/relatorio-vulnerabilidades.md).

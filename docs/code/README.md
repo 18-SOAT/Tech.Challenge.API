@@ -93,6 +93,7 @@ src/
 - [Email](infra/email.md)
 - [Database (Prisma)](infra/database.md)
 - [Segurança HTTP (rate limit, headers, CORS)](infra/security.md)
+- [Relatório de análise de vulnerabilidades](../security/relatorio-vulnerabilidades.md)
 
 ## Bibliotecas
 
