@@ -4,7 +4,7 @@ Análise de segurança do repositório `18-SOAT/Tech.Challenge.API`: dependênci
 
 - **Data da análise:** 2026-10-24
 - **Base analisada:** branch `ci/analise-vulnerabilidades` (sobre `feat/seguranca-http`, com todas as dependências da fase, inclusive o `@elysiajs/cors`)
-- **Resultado final:** **0 vulnerabilidades** nas dependências (produção e desenvolvimento), **0 segredos** no histórico, **0 problemas** de configuração no Dockerfile. As imagens Docker são analisadas pelo CI (ver [Imagens Docker](#4-imagens-docker)).
+- **Resultado final:** **0 vulnerabilidades** nas dependências (produção e desenvolvimento), **0 segredos** no histórico, **0 problemas** de configuração no Dockerfile. As imagens Docker são analisadas pelo CI (ver [Imagens Docker](#4-imagens-docker)). A análise manual registrou **1 risco conhecido**, de regra de negócio, já tratado no issue [#46](https://github.com/18-SOAT/Tech.Challenge.API/issues/46) (ver [Riscos conhecidos](#6-riscos-conhecidos-análise-manual)).
 
 ## Ferramentas
 
@@ -79,11 +79,21 @@ docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.76.
 Além das dependências, a API já tem controles que reduzem a superfície de ataque (detalhe em [`docs/code/infra/security.md`](../code/infra/security.md)):
 
 - **Autenticação JWT** (Bearer) em toda rota administrativa, com papéis (`ADMIN`, `MECHANIC`) e regra por recurso (mecânico só na OS atribuída; cliente só nas próprias Ordens).
-- **Rate limit** nas rotas públicas de auth (por IP e, no login e na redefinição, por e-mail), contra força bruta e disparo de e-mail.
+- **Rate limit** nas rotas públicas de auth (por IP e, no login e na redefinição, por e-mail canônico), contra força bruta e disparo de e-mail.
 - **Headers de segurança** em toda resposta (CSP, `nosniff`, `X-Frame-Options`, HSTS, `no-store`) e **CORS** só para origens configuradas.
 - **Validação de entrada** na borda (TypeBox) e de dados sensíveis no domínio (CPF/CNPJ, placa, e-mail).
 - **Senhas** com bcrypt e comparação de custo constante no login (sem enumeração de e-mail por tempo de resposta); **link de acesso** de uso único e validade curta.
 - **Env validado no boot:** `JWT_SECRET` com no mínimo 32 caracteres; configuração inválida derruba a subida.
+
+## 6. Riscos conhecidos (análise manual)
+
+Ferramentas automáticas acham dependência vulnerável, segredo e configuração errada, mas não acham **falha de regra de negócio**: uma requisição válida usada de um jeito que o sistema não previu. Os riscos abaixo vieram de revisão manual e ficam registrados com a tratativa.
+
+| Risco | Vetor | Categoria | Impacto antes da tratativa | Quando o risco sobe | Tratativa | Status |
+|---|---|---|---|---|---|---|
+| Várias contas para o mesmo e-mail | Aliases da mesma caixa de entrada viravam logins diferentes, porque a unicidade do login comparava só o e-mail em minúsculas: pontos no Gmail (`j.o.a.o@gmail.com`), domínio alternativo (`@googlemail.com`) e sub-endereçamento (`joao+1@gmail.com`, aceito também por Outlook, iCloud, Proton e Fastmail) | [OWASP API6:2023](https://owasp.org/API-Security/editions/2023/en/0xa6-unrestricted-access-to-sensitive-business-flows/) — acesso irrestrito a fluxo de negócio | **Baixo:** o auto-cadastro exige CPF/CNPJ único, então cada conta extra precisava de outro documento (barreira fraca, já que CPF com dígito válido é fácil de gerar); o rate limit do `/auth/register` limita o volume por IP | Qualquer benefício por conta: validação de cartão, cupom, período grátis | **E-mail canônico:** forma usada só para unicidade e busca do login (minúsculas, `googlemail.com` → `gmail.com`, pontos ignorados no Gmail, `+tag` removido nos provedores que o tratam como alias), na coluna `users.email_canonical` (`@unique`). Alias de um login existente recebe o mesmo 409 do e-mail em uso; o e-mail digitado é preservado para envio; o rate limit por conta conta pelo e-mail canônico | Tratado — [#46](https://github.com/18-SOAT/Tech.Challenge.API/issues/46) |
+
+Quando entrar validação de cartão, o e-mail canônico é uma camada, não a solução inteira: o controle principal passa a ser o fingerprint do cartão no gateway de pagamento (o mesmo cartão em várias contas), somado ao rate limit.
 
 ## Como reproduzir
 

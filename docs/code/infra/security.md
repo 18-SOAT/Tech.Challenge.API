@@ -6,8 +6,8 @@ O que a camada HTTP faz antes de qualquer regra de negócio: limitar tentativas 
 
 | Onde | Chave | Por quê |
 |---|---|---|
-| `POST /auth/login` | IP **e** e-mail | Força bruta de senha. A contagem por e-mail pega quem tenta a mesma conta de vários IPs. |
-| `POST /auth/password-reset` | IP **e** e-mail | Disparo de e-mail em massa para a mesma caixa. |
+| `POST /auth/login` | IP **e** e-mail canônico | Força bruta de senha. A contagem por e-mail pega quem tenta a mesma conta de vários IPs; pelo e-mail canônico, variar o alias (`j.oao+1@`) não reinicia a contagem. |
+| `POST /auth/password-reset` | IP **e** e-mail canônico | Disparo de e-mail em massa para a mesma caixa. |
 | `POST /auth/register`, `/auth/first-access`, `/auth/set-password` | IP | Rotas públicas: cadastro em massa, disparo de e-mail, tentativa de token. |
 
 - **Limite:** `RATE_LIMIT_MAX` requisições por `RATE_LIMIT_WINDOW_SECONDS` (padrão: 10 por 60 s), cada rota com a própria contagem.
