@@ -127,8 +127,13 @@ describe('Service Orders (e2e)', () => {
         body: { mechanicId: MECHANIC_ID },
       },
       { method: 'POST', path: `/orders/${UNKNOWN_ID}/deliver` },
+      { method: 'QUERY', path: '/orders', body: {} },
+      { method: 'GET', path: `/orders/${UNKNOWN_ID}` },
+      { method: 'QUERY', path: '/service-orders/execution-time', body: {} },
     ];
     const teamRoutes = [
+      { method: 'QUERY', path: '/service-orders', body: {} },
+      { method: 'QUERY', path: '/service-orders/queue', body: {} },
       { method: 'GET', path: `/service-orders/${UNKNOWN_ID}` },
       {
         method: 'POST',
@@ -599,6 +604,145 @@ describe('Service Orders (e2e)', () => {
         body: { mechanicId: ADMIN_ID },
       });
       expect(assignAdmin.status).toBe(422);
+    });
+  });
+
+  describe('gestão administrativa', () => {
+    const query = (path: string, body: unknown = {}, token?: string) =>
+      call(path, { method: 'QUERY', body, token });
+    const dataOf = async (response: Response) =>
+      (await readEnvelope(response)).data;
+
+    // OS 1 aguardando aprovação (mecânico atribuído) + reparo adicional sem
+    // responsável, em diagnóstico, na mesma Ordem.
+    const openTwo = async () => {
+      const { orderId, serviceOrderId } = await openQuote();
+      const additional = await dataOf(
+        await call(`/orders/${orderId}/service-orders`, { body: {} }),
+      );
+      return { orderId, quoteId: serviceOrderId, diagnosisId: additional.id };
+    };
+
+    it('fila: aprovada primeiro, depois aguardando e diagnóstico; o mecânico vê só a dele', async () => {
+      const { quoteId, diagnosisId } = await openTwo();
+      const ids = async (token?: string) =>
+        (
+          await dataOf(await query('/service-orders/queue', {}, token))
+        ).items.map((item: { id: string }) => item.id);
+
+      expect(await ids()).toEqual([quoteId, diagnosisId]);
+
+      await call(`/service-orders/${quoteId}/approve`, { method: 'POST' });
+      const queue = await dataOf(await query('/service-orders/queue'));
+      expect(queue).toMatchObject({ total: 2, page: 1, limit: 20 });
+      expect(queue.items[0]).toMatchObject({
+        id: quoteId,
+        status: 'IN_EXECUTION',
+      });
+      expect(await ids(mechanicToken)).toEqual([quoteId]);
+    });
+
+    it('listagem de OS com filtros; o MECHANIC não vê a OS de outro mesmo filtrando', async () => {
+      const { quoteId, diagnosisId } = await openTwo();
+
+      const inDiagnosis = await dataOf(
+        await query('/service-orders', { status: 'IN_DIAGNOSIS' }),
+      );
+      expect(inDiagnosis.total).toBe(1);
+      expect(inDiagnosis.items[0].id).toBe(diagnosisId);
+
+      const byCustomer = await dataOf(
+        await query('/service-orders', { customerId: CUSTOMER_ID }),
+      );
+      expect(byCustomer.total).toBe(2);
+
+      const asMechanic = await dataOf(
+        await query(
+          '/service-orders',
+          { assigneeId: OTHER_MECHANIC_ID },
+          mechanicToken,
+        ),
+      );
+      expect(asMechanic.items.map((item: { id: string }) => item.id)).toEqual([
+        quoteId,
+      ]);
+    });
+
+    it('lista e detalha a Ordem com as OS, o andamento e os totais', async () => {
+      const { orderId, quoteId } = await openTwo();
+      await call(`/service-orders/${quoteId}/approve`, { method: 'POST' });
+
+      const orders = await dataOf(await query('/orders'));
+      expect(orders.total).toBe(1);
+      expect(orders.items[0]).toMatchObject({ id: orderId, number: 1 });
+      expect(
+        (await dataOf(await query('/orders', { customerId: UNKNOWN_ID })))
+          .total,
+      ).toBe(0);
+
+      const detail = await call(`/orders/${orderId}`);
+      expect(detail.status).toBe(200);
+      const body = await dataOf(detail);
+      expect(body).toMatchObject({
+        id: orderId,
+        status: OrderStatus.IN_PROGRESS,
+        stage: 'IN_EXECUTION',
+        quotedTotal: 160.9,
+        approvedTotal: 160.9,
+      });
+      expect(body.serviceOrders).toHaveLength(2);
+    });
+
+    it('tempo médio: só conta OS finalizadas, com a duração estimada do serviço', async () => {
+      const { quoteId } = await openTwo();
+      const empty = await dataOf(await query('/service-orders/execution-time'));
+      expect(empty).toEqual({
+        global: { averageMinutes: 0, count: 0 },
+        byService: [],
+      });
+
+      await call(`/service-orders/${quoteId}/approve`, { method: 'POST' });
+      await call(`/service-orders/${quoteId}/finish`, {
+        method: 'POST',
+        token: mechanicToken,
+      });
+
+      const report = await dataOf(
+        await query('/service-orders/execution-time', {
+          serviceId: SERVICE_ID,
+        }),
+      );
+      expect(report.global.count).toBe(1);
+      expect(report.byService).toEqual([
+        {
+          serviceId: SERVICE_ID,
+          name: 'Troca de óleo',
+          estimatedDurationMinutes: 30,
+          averageMinutes: expect.any(Number),
+          count: 1,
+        },
+      ]);
+
+      const future = await dataOf(
+        await query('/service-orders/execution-time', {
+          finishedFrom: '2999-01-01T00:00:00Z',
+        }),
+      );
+      expect(future.global.count).toBe(0);
+    });
+
+    it('400 em filtro inválido e 404 em Ordem inexistente', async () => {
+      const responses = await Promise.all([
+        query('/service-orders', { createdFrom: 'ontem' }),
+        query('/service-orders', { page: 0 }),
+        query('/service-orders/queue', { assigneeId: 'abc' }),
+        query('/orders', { status: 'PRONTA' }),
+        query('/service-orders/execution-time', { serviceId: 'abc' }),
+      ]);
+      for (const response of responses) expect(response.status).toBe(400);
+
+      const missing = await call(`/orders/${UNKNOWN_ID}`);
+      expect(missing.status).toBe(404);
     });
   });
 });

@@ -1,12 +1,21 @@
+import type { Prisma } from '../../../../generated/prisma/client.js';
+import type { Page } from '../../../../shared/domain/pagination.js';
 import type {
   PrismaClient,
   PrismaTransaction,
 } from '../../../../shared/infrastructure/prisma/client.js';
 import type { ServiceOrder } from '../../domain/entities/service-order.entity.js';
 import { OrderStatus } from '../../domain/enums/order-status.enum.js';
+import { ServiceOrderStatus } from '../../domain/enums/service-order-status.enum.js';
 import { OrderError } from '../../domain/errors/order.error.js';
 import { ServiceOrderError } from '../../domain/errors/service-order.error.js';
-import type { ServiceOrderRepository } from '../../domain/repositories/service-order.repository.js';
+import type {
+  FinishedServiceOrderFilter,
+  ServiceOrderFilter,
+  ServiceOrderQueueFilter,
+  ServiceOrderRepository,
+} from '../../domain/repositories/service-order.repository.js';
+import { SERVICE_ORDER_QUEUE_PRIORITY } from '../../domain/services/service-order-queue.js';
 import { ServiceOrderMapper, withAggregate } from './service-order.mapper.js';
 
 export class PrismaServiceOrderRepository implements ServiceOrderRepository {
@@ -34,6 +43,88 @@ export class PrismaServiceOrderRepository implements ServiceOrderRepository {
       where: { orderId },
       include: withAggregate,
       orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    });
+    return records.map(ServiceOrderMapper.toEntity);
+  }
+
+  async findMany(filter: ServiceOrderFilter): Promise<Page<ServiceOrder>> {
+    const where: Prisma.ServiceOrderWhereInput = {
+      status: filter.status,
+      assigneeId: filter.assigneeId,
+      order: filter.customerId ? { customerId: filter.customerId } : undefined,
+      createdAt:
+        filter.createdFrom || filter.createdTo
+          ? { gte: filter.createdFrom, lte: filter.createdTo }
+          : undefined,
+    };
+    // Lote na mesma transação: total e página vêm do mesmo snapshot.
+    const [total, records] = await this.prisma.$transaction([
+      this.prisma.serviceOrder.count({ where }),
+      this.prisma.serviceOrder.findMany({
+        where,
+        include: withAggregate,
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        skip: (filter.page - 1) * filter.limit,
+        take: filter.limit,
+      }),
+    ]);
+    return { items: records.map(ServiceOrderMapper.toEntity), total };
+  }
+
+  // A prioridade da fila não é a ordem de declaração do enum no banco, então o
+  // orderBy do Prisma não a expressa: o SQL ordena pela posição do status no array
+  // do domínio (SERVICE_ORDER_QUEUE_PRIORITY) e pela chegada da Ordem. A query só
+  // devolve a página de ids; os agregados vêm depois, pelo caminho de sempre.
+  async findQueue(
+    filter: ServiceOrderQueueFilter,
+  ): Promise<Page<ServiceOrder>> {
+    const priority = [...SERVICE_ORDER_QUEUE_PRIORITY];
+    const assigneeId = filter.assigneeId ?? null;
+    const [total, rows] = await this.prisma.$transaction([
+      this.prisma.serviceOrder.count({
+        where: { status: { in: priority }, assigneeId: filter.assigneeId },
+      }),
+      this.prisma.$queryRaw<{ id: string }[]>`
+        SELECT so.id
+        FROM service_orders so
+        JOIN orders o ON o.id = so.order_id
+        WHERE so.status::text = ANY(${priority}::text[])
+          AND (${assigneeId}::uuid IS NULL OR so.assignee_id = ${assigneeId}::uuid)
+        ORDER BY array_position(${priority}::text[], so.status::text),
+                 o.received_at, so.id
+        LIMIT ${filter.limit} OFFSET ${(filter.page - 1) * filter.limit}`,
+    ]);
+    const ids = rows.map((row) => row.id);
+    const records = await this.prisma.serviceOrder.findMany({
+      where: { id: { in: ids } },
+      include: withAggregate,
+    });
+    const byId = new Map(records.map((record) => [record.id, record]));
+    const items = ids.flatMap((id) => {
+      const record = byId.get(id);
+      return record ? [ServiceOrderMapper.toEntity(record)] : [];
+    });
+    return { items, total };
+  }
+
+  // Período pelo FINISHED do histórico: é quando a execução terminou.
+  async findFinished(
+    filter: FinishedServiceOrderFilter,
+  ): Promise<ServiceOrder[]> {
+    const records = await this.prisma.serviceOrder.findMany({
+      where: {
+        status: ServiceOrderStatus.FINISHED,
+        statusHistory: {
+          some: {
+            status: ServiceOrderStatus.FINISHED,
+            changedAt: { gte: filter.finishedFrom, lte: filter.finishedTo },
+          },
+        },
+        services: filter.serviceId
+          ? { some: { serviceId: filter.serviceId } }
+          : undefined,
+      },
+      include: withAggregate,
     });
     return records.map(ServiceOrderMapper.toEntity);
   }

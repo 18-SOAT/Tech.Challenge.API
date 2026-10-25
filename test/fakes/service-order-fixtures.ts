@@ -76,7 +76,7 @@ export function makeServiceOrderWorld() {
   const products = new InMemoryProductRepository();
   const employees = new InMemoryEmployeeRepository();
   const orders = new InMemoryOrderRepository();
-  const serviceOrders = new InMemoryServiceOrderRepository();
+  const serviceOrders = new InMemoryServiceOrderRepository(orders);
   const orderOpening = new InMemoryOrderOpeningRepository(
     orders,
     serviceOrders,

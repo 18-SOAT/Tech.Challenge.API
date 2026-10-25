@@ -7,12 +7,17 @@ import { approveQuoteHandler } from './controllers/decision/approve-quote.handle
 import { rejectQuoteHandler } from './controllers/decision/reject-quote.handler.js';
 import { deliverOrderHandler } from './controllers/deliver/deliver-order.handler.js';
 import { completeDiagnosisHandler } from './controllers/diagnosis/complete-diagnosis.handler.js';
+import { getExecutionTimeHandler } from './controllers/execution-time/get-execution-time.handler.js';
+import { findOrderByIdHandler } from './controllers/find/by-id/find-order-by-id.handler.js';
 import { findServiceOrderByIdHandler } from './controllers/find/by-id/find-service-order-by-id.handler.js';
 import { finishServiceOrderHandler } from './controllers/finish/finish-service-order.handler.js';
 import { addProductItemHandler } from './controllers/items/add-product-item.handler.js';
 import { addServiceItemHandler } from './controllers/items/add-service-item.handler.js';
 import { changeItemQuantityHandler } from './controllers/items/change-item-quantity.handler.js';
 import { removeItemHandler } from './controllers/items/remove-item.handler.js';
+import { listOrdersHandler } from './controllers/list/list-orders.handler.js';
+import { listServiceOrderQueueHandler } from './controllers/list/list-service-order-queue.handler.js';
+import { listServiceOrdersHandler } from './controllers/list/list-service-orders.handler.js';
 import { findMyOrderHandler } from './controllers/me/find-my-order.handler.js';
 import { listMyOrdersHandler } from './controllers/me/list-my-orders.handler.js';
 import { openAdditionalServiceOrderHandler } from './controllers/open/open-additional-service-order.handler.js';
@@ -20,7 +25,8 @@ import { openOrderHandler } from './controllers/open/open-order.handler.js';
 
 const bearer = { security: [{ bearerAuth: [] }] };
 
-// Abrir ordem, reparo adicional e entregar o veículo é do Atendente (ADMIN).
+// Abrir ordem, reparo adicional, entregar o veículo e consultar as Ordens é do
+// Atendente (ADMIN).
 export const orderRoutes = (useCases: ServiceOrderUseCases, auth: AuthPlugin) =>
   new Elysia({ prefix: '/orders', tags: ['Service Orders'] })
     .use(auth)
@@ -33,11 +39,15 @@ export const orderRoutes = (useCases: ServiceOrderUseCases, auth: AuthPlugin) =>
             auth,
           ),
         )
-        .use(deliverOrderHandler(useCases.deliverOrder)),
+        .use(deliverOrderHandler(useCases.deliverOrder))
+        .use(listOrdersHandler(useCases.listOrders))
+        .use(findOrderByIdHandler(useCases.findOrderById)),
     );
 
-// Atribuir é do Atendente; diagnóstico e itens são do mecânico responsável ou do
-// ADMIN — quem confere o "responsável" é a ServiceOrder.assertCanBeWorkedBy().
+// Atribuir e o tempo médio são do Atendente. Listagem e fila aceitam o mecânico,
+// mas o use case restringe às OS dele (ServiceOrder.assigneeScopeFor). Diagnóstico
+// e itens são do mecânico responsável ou do ADMIN — quem confere o "responsável" é
+// a ServiceOrder.assertCanBeWorkedBy().
 // Aprovar/rejeitar aceita o cliente: o guard só exige token, e quem confere o dono
 // da Ordem é a Order.assertQuoteCanBeDecidedBy().
 export const serviceOrderRoutes = (
@@ -47,7 +57,9 @@ export const serviceOrderRoutes = (
   new Elysia({ prefix: '/service-orders', tags: ['Service Orders'] })
     .use(auth)
     .guard({ auth: { roles: [EmployeeRole.ADMIN] }, detail: bearer }, (app) =>
-      app.use(assignMechanicHandler(useCases.assignMechanic)),
+      app
+        .use(assignMechanicHandler(useCases.assignMechanic))
+        .use(getExecutionTimeHandler(useCases.getExecutionTime)),
     )
     .guard(
       {
@@ -56,6 +68,10 @@ export const serviceOrderRoutes = (
       },
       (app) =>
         app
+          .use(listServiceOrdersHandler(useCases.listServiceOrders, auth))
+          .use(
+            listServiceOrderQueueHandler(useCases.listServiceOrderQueue, auth),
+          )
           .use(findServiceOrderByIdHandler(useCases.findServiceOrderById, auth))
           .use(addServiceItemHandler(useCases.addServiceItem, auth))
           .use(addProductItemHandler(useCases.addProductItem, auth))

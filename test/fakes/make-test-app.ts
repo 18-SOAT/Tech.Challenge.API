@@ -36,9 +36,14 @@ import { ChangeItemQuantityUseCase } from '../../src/modules/service-order/appli
 import { CompleteDiagnosisUseCase } from '../../src/modules/service-order/application/use-cases/complete-diagnosis.use-case.js';
 import { DeliverOrderUseCase } from '../../src/modules/service-order/application/use-cases/deliver-order.use-case.js';
 import { FindMyOrderUseCase } from '../../src/modules/service-order/application/use-cases/find-my-order.use-case.js';
+import { FindOrderByIdUseCase } from '../../src/modules/service-order/application/use-cases/find-order-by-id.use-case.js';
 import { FindServiceOrderByIdUseCase } from '../../src/modules/service-order/application/use-cases/find-service-order-by-id.use-case.js';
 import { FinishServiceOrderUseCase } from '../../src/modules/service-order/application/use-cases/finish-service-order.use-case.js';
+import { GetExecutionTimeUseCase } from '../../src/modules/service-order/application/use-cases/get-execution-time.use-case.js';
 import { ListMyOrdersUseCase } from '../../src/modules/service-order/application/use-cases/list-my-orders.use-case.js';
+import { ListOrdersUseCase } from '../../src/modules/service-order/application/use-cases/list-orders.use-case.js';
+import { ListServiceOrderQueueUseCase } from '../../src/modules/service-order/application/use-cases/list-service-order-queue.use-case.js';
+import { ListServiceOrdersUseCase } from '../../src/modules/service-order/application/use-cases/list-service-orders.use-case.js';
 import { OpenAdditionalServiceOrderUseCase } from '../../src/modules/service-order/application/use-cases/open-additional-service-order.use-case.js';
 import { OpenOrderUseCase } from '../../src/modules/service-order/application/use-cases/open-order.use-case.js';
 import { RejectQuoteUseCase } from '../../src/modules/service-order/application/use-cases/reject-quote.use-case.js';
@@ -87,7 +92,7 @@ export function makeTestApp() {
   const claims = new AuthClaimsResolver(customers, employees);
   const database = new FakeDatabaseHealthCheck();
   const orders = new InMemoryOrderRepository();
-  const serviceOrders = new InMemoryServiceOrderRepository();
+  const serviceOrders = new InMemoryServiceOrderRepository(orders);
   const quoteMailer = new FakeServiceOrderMailer();
   const approval = new InMemoryServiceOrderApprovalRepository(
     serviceOrders,
@@ -217,6 +222,11 @@ export function makeTestApp() {
         services,
         products,
       ),
+      listServiceOrders: new ListServiceOrdersUseCase(serviceOrders),
+      listServiceOrderQueue: new ListServiceOrderQueueUseCase(serviceOrders),
+      listOrders: new ListOrdersUseCase(orders),
+      findOrderById: new FindOrderByIdUseCase(orders, serviceOrders),
+      getExecutionTime: new GetExecutionTimeUseCase(serviceOrders, services),
     },
   });
 

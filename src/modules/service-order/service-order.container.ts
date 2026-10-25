@@ -17,9 +17,14 @@ import { ChangeItemQuantityUseCase } from './application/use-cases/change-item-q
 import { CompleteDiagnosisUseCase } from './application/use-cases/complete-diagnosis.use-case.js';
 import { DeliverOrderUseCase } from './application/use-cases/deliver-order.use-case.js';
 import { FindMyOrderUseCase } from './application/use-cases/find-my-order.use-case.js';
+import { FindOrderByIdUseCase } from './application/use-cases/find-order-by-id.use-case.js';
 import { FindServiceOrderByIdUseCase } from './application/use-cases/find-service-order-by-id.use-case.js';
 import { FinishServiceOrderUseCase } from './application/use-cases/finish-service-order.use-case.js';
+import { GetExecutionTimeUseCase } from './application/use-cases/get-execution-time.use-case.js';
 import { ListMyOrdersUseCase } from './application/use-cases/list-my-orders.use-case.js';
+import { ListOrdersUseCase } from './application/use-cases/list-orders.use-case.js';
+import { ListServiceOrderQueueUseCase } from './application/use-cases/list-service-order-queue.use-case.js';
+import { ListServiceOrdersUseCase } from './application/use-cases/list-service-orders.use-case.js';
 import { OpenAdditionalServiceOrderUseCase } from './application/use-cases/open-additional-service-order.use-case.js';
 import { OpenOrderUseCase } from './application/use-cases/open-order.use-case.js';
 import { RejectQuoteUseCase } from './application/use-cases/reject-quote.use-case.js';
@@ -113,6 +118,11 @@ export function makeServiceOrderContainer(shared: SharedContainer) {
       services,
       products,
     ),
+    listServiceOrders: new ListServiceOrdersUseCase(serviceOrders),
+    listServiceOrderQueue: new ListServiceOrderQueueUseCase(serviceOrders),
+    listOrders: new ListOrdersUseCase(orders),
+    findOrderById: new FindOrderByIdUseCase(orders, serviceOrders),
+    getExecutionTime: new GetExecutionTimeUseCase(serviceOrders, services),
   };
 }
 
