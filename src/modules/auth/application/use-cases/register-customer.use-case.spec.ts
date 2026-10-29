@@ -68,6 +68,20 @@ describe('RegisterCustomerUseCase', () => {
     );
   });
 
+  it('rejeita alias do mesmo e-mail (e-mail canônico) com o mesmo 409', async () => {
+    await useCase.execute({ ...input, email: 'joaosilva@gmail.com' });
+
+    await expect(
+      useCase.execute({
+        ...input,
+        email: 'j.o.a.o.silva+1@googlemail.com',
+        document: '11222333000181',
+      }),
+    ).rejects.toThrow(
+      expect.objectContaining({ code: UserErrorCode.EMAIL_ALREADY_IN_USE }),
+    );
+  });
+
   it('rejeita CPF/CNPJ já cadastrado, mesmo com máscara diferente', async () => {
     await useCase.execute(input);
 

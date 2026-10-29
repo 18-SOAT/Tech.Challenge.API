@@ -57,7 +57,8 @@ Os contextos se referenciam **só por ID**. Uma OS guarda `productId` e `service
 | Link de acesso | token de acesso | Link enviado por e-mail para definir ou redefinir a senha. Tem validade curta e vale uma vez. |
 | Documento (CPF/CNPJ) | `Document` (VO) | CPF (11 dígitos) ou CNPJ (14), só dígitos, com dígito verificador validado. |
 | Telefone | `Phone` (VO) | DDD + número, 10 ou 11 dígitos. |
-| E-mail | `Email` (VO) | Normalizado (trim + minúsculas) e validado. |
+| E-mail | `Email` (VO) | Normalizado (trim + minúsculas) e validado. É o endereço digitado, usado para enviar e-mails. |
+| E-mail canônico | `Email.canonical` | Forma do e-mail usada só para unicidade e busca do login: aliases da mesma caixa de entrada (ex: `j.oao+1@googlemail.com` e `joao@gmail.com`) têm o mesmo e-mail canônico e, portanto, são um login só. |
 | Senha | `Password` (VO) | De 8 caracteres a 72 bytes (limite do bcrypt). Só o hash é persistido. |
 | Funcionário | `Employee` | Pessoa da oficina com login e um papel (`EmployeeRole`), cadastrada pelo ADMIN. |
 | Administrador / Atendente | `EmployeeRole.ADMIN` | Faz o atendimento e a gestão: abre ordens, cadastra clientes, catálogo, estoque e funcionários. |
@@ -135,8 +136,8 @@ Com um status só, um reparo adicional obrigaria a voltar uma OS "Em execução"
 
 | Agregado (raiz) | Dentro do agregado | Value Objects | Invariantes principais |
 |---|---|---|---|
-| `User` | — | `Email`, `Password` | E-mail único; usuário inativo não autentica; o link de acesso vale uma vez. |
-| `Customer` | — | `Document`, `Email`, `Phone` | Documento válido, único e imutável; e-mail obrigatório (canal de contato e do primeiro acesso), pode repetir entre clientes e funcionários (único é o e-mail de login, no `User`); não é excluído se tiver login, veículos ou OS. |
+| `User` | — | `Email`, `Password` | E-mail canônico único; usuário inativo não autentica; o link de acesso vale uma vez. |
+| `Customer` | — | `Document`, `Email`, `Phone` | Documento válido, único e imutável; e-mail obrigatório (canal de contato e do primeiro acesso), pode repetir entre clientes e funcionários (único é o e-mail canônico do login, no `User`); não é excluído se tiver login, veículos ou OS. |
 | `Employee` | — | `Email` | Nome obrigatório; papel `ADMIN` ou `MECHANIC`, alterado só por ADMIN; sempre resta ao menos um ADMIN (garantido também no banco, com os ADMINs travados na transação). O e-mail é o de login, lido do `User`. |
 | `Vehicle` | — | `LicensePlate` | Placa válida e única (pode ser corrigida ou convertida para Mercosul); pertence a um cliente (por ID), que não muda; ano entre 1900 e o ano seguinte ao atual; não é excluído se tiver OS. |
 | `Service` | — | `Money` | Nome único no catálogo (sem diferenciar maiúscula); preço ≥ 0 com até 2 casas; duração estimada, se informada, em minutos > 0; inativo não entra em orçamento novo; não é excluído se já entrou em OS (desativa-se). |
@@ -150,7 +151,7 @@ Com um status só, um reparo adicional obrigaria a voltar uma OS "Em execução"
 
 | Entidade | Agregado | Identidade e regra |
 |---|---|---|
-| `User` | `User` (raiz) | Identificado pelo `id`; e-mail único; senha só como hash. |
+| `User` | `User` (raiz) | Identificado pelo `id`; e-mail canônico único; senha só como hash. |
 | `Customer` | `Customer` (raiz) | Identificado pelo `id`; único por `Document`. |
 | `Employee` | `Employee` (raiz) | Identificado pelo `id`; sempre ligado a um `User` do tipo `EMPLOYEE`. |
 | `Vehicle` | `Vehicle` (raiz) | Identificado pelo `id`; único por placa. |
@@ -168,7 +169,7 @@ Value Objects não têm identidade: dois com o mesmo valor são iguais. São imu
 
 | VO | Regra | Usado em |
 |---|---|---|
-| `Email` | trim + minúsculas + formato válido | `User`, `Customer` |
+| `Email` | trim + minúsculas + formato válido; expõe o e-mail canônico | `User`, `Customer` |
 | `Password` | 8 caracteres a 72 bytes; nunca persistido (vira hash) | `User` |
 | `Document` | CPF (11) ou CNPJ (14) só dígitos, dígito verificador válido | `Customer` |
 | `Phone` | DDD + número, 10 ou 11 dígitos | `Customer` |
@@ -226,6 +227,12 @@ Se no futuro uma política precisar rodar fora da transação (ex: um e-mail com
 - A resposta é sempre a mesma, com ou sem cadastro, para não revelar quais CPFs são clientes (proteção contra enumeração). Quem prova a posse da conta é o acesso ao e-mail, não o CPF.
 - **Redefinição de senha:** mesmo fluxo, a partir do e-mail.
 - **Funcionários:** o ADMIN cadastra o funcionário (nome, e-mail, papel) e o Sistema envia o link de acesso. O login nasce com uma senha aleatória que ninguém conhece, e o link é o mesmo da redefinição: se não chegar ou expirar, o funcionário pede outro pela redefinição de senha. O ADMIN pode alterar o papel depois, mas o último ADMIN não pode deixar de ser ADMIN. O papel novo vale a partir do próximo login.
+- **E-mail canônico:** o login é único pelo e-mail canônico, não pelo digitado. Regra:
+  - minúsculas e sem espaços;
+  - `googlemail.com` vira `gmail.com`, e no Gmail os pontos do nome são ignorados;
+  - o `+tag` é removido só nos provedores que entregam o sub-endereço na mesma caixa: Gmail, Outlook/Hotmail/Live/MSN, iCloud, Proton e Fastmail. Nos demais domínios (ex: corporativos) fica só em minúsculas, porque lá `joao+vendas@` pode ser outra caixa.
+
+  Cadastro do cliente, primeiro acesso e cadastro de funcionário com um alias de login existente recebem o mesmo "E-mail já cadastrado" (409), sem revelar nada a mais. Login e redefinição de senha aceitam qualquer alias. O e-mail gravado e usado no envio continua o digitado. O rate limit por conta também conta pelo e-mail canônico, para os aliases não terem cada um o seu limite.
 - **Link de acesso:** token assinado com finalidade "definir senha" e validade curta. Ele **vale uma vez** porque deixa de ser aceito assim que a senha é definida: no primeiro acesso, o cliente já tem login; na redefinição, o link carrega o carimbo da senha atual (`User.passwordStamp`), que muda quando a senha muda. Ele é separado do token de sessão (audiência própria): o link não vale como login, e o login não vale como link.
 
 ### Saldo insuficiente na aprovação
@@ -343,6 +350,7 @@ Cada elemento do modelo e o arquivo onde ele vive.
 | `User` | Entidade (raiz) | `src/modules/user/domain/entities/user.entity.ts` |
 | `Password` | VO | `src/modules/user/domain/value-objects/password.vo.ts` |
 | `Email` | VO (Shared Kernel) | `src/shared/domain/value-objects/email.vo.ts` |
+| E-mail canônico | Getter do VO (`Email.canonical`), coluna `users.email_canonical` `@unique` | `src/shared/domain/value-objects/email.vo.ts`, `prisma/schema.prisma` |
 | `Money` | VO (Shared Kernel) | `src/shared/domain/value-objects/money.vo.ts` |
 | `UserType` | Enum | `src/modules/user/domain/enums/user-type.enum.ts` |
 | `Customer` | Entidade (raiz) | `src/modules/customer/domain/entities/customer.entity.ts` |

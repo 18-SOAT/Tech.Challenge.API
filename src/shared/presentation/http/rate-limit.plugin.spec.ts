@@ -26,10 +26,14 @@ describe('clientIp', () => {
 });
 
 describe('emailAccountKey', () => {
-  it('normaliza como o login; sem e-mail, sem chave de conta', () => {
+  it('usa o e-mail canônico, como o login; sem e-mail, sem chave de conta', () => {
     expect(emailAccountKey({ email: ' Joao@Oficina.com ' })).toBe(
       'joao@oficina.com',
     );
+    expect(emailAccountKey({ email: 'J.oao+1@googlemail.com' })).toBe(
+      'joao@gmail.com',
+    );
+    expect(emailAccountKey({ email: ' Joao ' })).toBe('joao');
     expect(emailAccountKey({ document: '123' })).toBeUndefined();
     expect(emailAccountKey(null)).toBeUndefined();
   });

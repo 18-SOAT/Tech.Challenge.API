@@ -36,6 +36,15 @@ describe('RequestPasswordResetUseCase', () => {
     });
   });
 
+  it('pedido por um alias: acha o login e envia para o e-mail cadastrado', async () => {
+    users.items.push(makeUser({ email: 'joaosilva@gmail.com' }));
+
+    await useCase.execute({ email: 'joao.silva+1@googlemail.com' });
+    await flushBackground();
+
+    expect(mailer.sent[0]?.to).toBe('joaosilva@gmail.com');
+  });
+
   it('e-mail sem login ou login inativo: termina igual, sem enviar nada', async () => {
     users.items.push(
       makeUser({ id: 'user-2', email: 'inativo@oficina.com', active: false }),

@@ -76,6 +76,10 @@ export class User {
     return this.email.value;
   }
 
+  get emailCanonical(): string {
+    return this.email.canonical;
+  }
+
   get typeValue(): UserType {
     return this.type;
   }

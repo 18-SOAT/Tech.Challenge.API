@@ -1,4 +1,5 @@
 import { Elysia } from 'elysia';
+import { Email } from '../../domain/value-objects/email.vo.js';
 import type { RateLimiter } from '../../infrastructure/rate-limit/rate-limiter.port.js';
 import type { ApiErrorBody } from './envelope.js';
 
@@ -61,8 +62,15 @@ export const rateLimit = (
     },
   );
 
-// Chave por conta do login: o e-mail normalizado como o use case faz.
+// Chave por conta do login: o e-mail canônico, como o use case busca — senão cada
+// alias da mesma caixa (j.oao@, joao+1@...) teria um limite próprio. E-mail
+// malformado não acha conta; ainda assim conta, só normalizado.
 export const emailAccountKey = (body: unknown): string | undefined => {
   const email = (body as { email?: unknown } | null)?.email;
-  return typeof email === 'string' ? email.trim().toLowerCase() : undefined;
+  if (typeof email !== 'string') return undefined;
+  try {
+    return Email.create(email).canonical;
+  } catch {
+    return email.trim().toLowerCase();
+  }
 };

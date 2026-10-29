@@ -16,7 +16,9 @@ export class InMemoryEmployeeRegistrationRepository
   ) {}
 
   async register(user: User, employee: Employee): Promise<void> {
-    if (await this.users.findByEmail(user.emailValue)) {
+    if (
+      this.users.items.some((u) => u.emailCanonical === user.emailCanonical)
+    ) {
       throw UserError.emailAlreadyInUse();
     }
     this.users.items.push(user);

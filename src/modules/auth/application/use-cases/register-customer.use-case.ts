@@ -38,7 +38,7 @@ export class RegisterCustomerUseCase
     const document = Document.create(input.document);
     const phone = Phone.create(input.phone);
 
-    if (await this.userRepository.findByEmail(email.value)) {
+    if (await this.userRepository.findByEmail(email)) {
       throw UserError.emailAlreadyInUse();
     }
     // Cliente cadastrado no balcão não se auto-cadastra: o caminho dele é o primeiro

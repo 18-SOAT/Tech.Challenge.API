@@ -63,7 +63,7 @@ export class SetPasswordUseCase implements UseCase<SetPasswordInput, void> {
 
     // O login usa o e-mail que a oficina cadastrou: quem recebeu o link prova a posse dele.
     const email = Email.create(customer.emailValue);
-    if (await this.userRepository.findByEmail(email.value)) {
+    if (await this.userRepository.findByEmail(email)) {
       throw UserError.emailAlreadyInUse();
     }
 

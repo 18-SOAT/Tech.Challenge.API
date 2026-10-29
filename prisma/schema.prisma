@@ -28,7 +28,8 @@ enum UserType {
 
 model User {
   id             String   @id @db.Uuid
-  email          String   @unique
+  email          String
+  emailCanonical String   @unique @map("email_canonical")
   hashedPassword String   @map("hashed_password")
   type           UserType
   active         Boolean  @default(true)

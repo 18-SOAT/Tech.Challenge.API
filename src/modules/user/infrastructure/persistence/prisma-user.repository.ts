@@ -1,3 +1,4 @@
+import type { Email } from '../../../../shared/domain/value-objects/email.vo.js';
 import type { PrismaClient } from '../../../../shared/infrastructure/prisma/client.js';
 import type { User } from '../../domain/entities/user.entity.js';
 import type { UserRepository } from '../../domain/repositories/user.repository.js';
@@ -11,8 +12,10 @@ export class PrismaUserRepository implements UserRepository {
     return record ? UserMapper.toEntity(record) : null;
   }
 
-  async findByEmail(email: string): Promise<User | null> {
-    const record = await this.prisma.user.findUnique({ where: { email } });
+  async findByEmail(email: Email): Promise<User | null> {
+    const record = await this.prisma.user.findUnique({
+      where: { emailCanonical: email.canonical },
+    });
     return record ? UserMapper.toEntity(record) : null;
   }
 

@@ -1,5 +1,6 @@
 import type { User } from '../../src/modules/user/domain/entities/user.entity.js';
 import type { UserRepository } from '../../src/modules/user/domain/repositories/user.repository.js';
+import type { Email } from '../../src/shared/domain/value-objects/email.vo.js';
 
 export class InMemoryUserRepository implements UserRepository {
   readonly items: User[] = [];
@@ -8,8 +9,10 @@ export class InMemoryUserRepository implements UserRepository {
     return this.items.find((user) => user.idValue === id) ?? null;
   }
 
-  async findByEmail(email: string): Promise<User | null> {
-    return this.items.find((user) => user.emailValue === email) ?? null;
+  async findByEmail(email: Email): Promise<User | null> {
+    return (
+      this.items.find((user) => user.emailCanonical === email.canonical) ?? null
+    );
   }
 
   // O update condicional do adapter Prisma protege contra corrida entre requisições;

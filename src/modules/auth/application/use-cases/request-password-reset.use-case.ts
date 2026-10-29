@@ -22,7 +22,7 @@ export class RequestPasswordResetUseCase
 
   async execute(input: RequestPasswordResetInput): Promise<void> {
     const email = Email.create(input.email);
-    const user = await this.userRepository.findByEmail(email.value);
+    const user = await this.userRepository.findByEmail(email);
     if (!user?.isActive) return;
 
     // Fire-and-forget: ver RequestFirstAccessUseCase.

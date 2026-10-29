@@ -81,6 +81,28 @@ describe('Auth (e2e)', () => {
       );
     });
 
+    it('409: alias do mesmo e-mail (e-mail canônico), mesma resposta do e-mail em uso', async () => {
+      await call(
+        jsonRequest('/auth/register', {
+          body: { ...validRegister, email: 'joaosilva@gmail.com' },
+        }),
+      );
+      const response = await call(
+        jsonRequest('/auth/register', {
+          body: {
+            ...validRegister,
+            email: 'J.oao.Silva+2@googlemail.com',
+            document: '11222333000181',
+          },
+        }),
+      );
+
+      expect(response.status).toBe(409);
+      expect((await readEnvelope(response)).message).toBe(
+        'E-mail já cadastrado.',
+      );
+    });
+
     it('409: CPF/CNPJ já cadastrado', async () => {
       await call(jsonRequest('/auth/register', { body: validRegister }));
       const response = await call(
@@ -118,6 +140,31 @@ describe('Auth (e2e)', () => {
         type: UserType.CUSTOMER,
         customerId: 'customer-1',
       });
+    });
+
+    it('200: login com um alias do e-mail cadastrado', async () => {
+      await call(
+        jsonRequest('/auth/register', {
+          body: {
+            ...validRegister,
+            email: 'joaosilva@gmail.com',
+            document: '11222333000181',
+          },
+        }),
+      );
+      const response = await call(
+        jsonRequest('/auth/login', {
+          body: {
+            email: 'joao.silva+oficina@googlemail.com',
+            password: 'senha-forte',
+          },
+        }),
+      );
+
+      expect(response.status).toBe(200);
+      expect((await readEnvelope(response)).data.user.email).toBe(
+        'joaosilva@gmail.com',
+      );
     });
 
     it('401: senha errada, com mensagem genérica', async () => {
