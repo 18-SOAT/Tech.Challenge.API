@@ -78,6 +78,7 @@ export async function createProduct(
 }
 
 export interface OpenedOrder {
+  vehicleId: string;
   orderId: string;
   serviceOrderId: string;
   serviceItemId: string;
@@ -98,6 +99,7 @@ export async function openOrder(
     services: [{ serviceId: service.id, quantity: 1 }],
   });
   return {
+    vehicleId: vehicle.id,
     orderId: data.order.id,
     serviceOrderId: data.serviceOrder.id,
     serviceItemId: data.serviceOrder.services[0].id,

@@ -54,10 +54,15 @@ export async function loginEmployee(
   return { token, employeeId: employeeId as string, email };
 }
 
-// Cliente com login: auto-cadastro em /auth/register.
-export async function registerCustomer(api: Api): Promise<Customer> {
-  const email = uniqueEmail('cliente');
-  const document = uniqueCpf();
+// Cliente com login: auto-cadastro em /auth/register. E-mail e documento únicos,
+// a menos que o cenário precise de um específico (ex: alias do Gmail).
+export async function registerCustomer(
+  api: Api,
+  {
+    email = uniqueEmail('cliente'),
+    document = uniqueCpf(),
+  }: { email?: string; document?: string } = {},
+): Promise<Customer> {
   const { status, body } = await request(api, 'POST', '/auth/register', {
     body: { email, password: PASSWORD, document, phone: PHONE },
   });

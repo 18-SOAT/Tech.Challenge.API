@@ -84,6 +84,17 @@ export async function expectNoEmail(to: string): Promise<void> {
   }
 }
 
+// Para quando o cenário não sabe a quem o e-mail iria (ex: documento inexistente):
+// a caixa inteira tem de continuar vazia — o resetWorld a esvazia antes do teste.
+export async function expectEmptyInbox(): Promise<void> {
+  await sleep(NO_EMAIL_WAIT_MS);
+  const response = await fetch(`${MAILPIT_URL}/api/v1/messages`);
+  const { total } = (await response.json()) as { total: number };
+  if (total > 0) {
+    throw new Error(`Esperava a caixa vazia, chegaram ${total} e-mails.`);
+  }
+}
+
 // Linha do corpo montada por AuthMailer.linkLines.
 export function extractAccessToken(email: Email): string {
   const match = email.text.match(

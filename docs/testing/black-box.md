@@ -118,7 +118,7 @@ Os IDs são estáveis: o teste da #36 usa o ID no nome (`it('AUTH-03: login com 
 
 | ID | Cenário | Passos (HTTP) | Esperado |
 |---|---|---|---|
-| AUTH-01 | Auto-cadastro e login | `POST /auth/register` com nome, documento, e-mail, telefone e senha → `POST /auth/login` | 201 com o usuário; login 200 com `accessToken`; `GET /auth/me` com o token devolve `type: CUSTOMER` e o `customerId` |
+| AUTH-01 | Auto-cadastro e login | `POST /auth/register` com documento, e-mail, telefone e senha → `POST /auth/login` | 201 com o usuário; login 200 com `accessToken`; `GET /auth/me` com o token devolve `type: CUSTOMER` e o `customerId` |
 | AUTH-02 | Cadastro com alias de e-mail em uso | Cadastro com `joaosilva@gmail.com` → cadastro com `j.o.a.o.silva+x@googlemail.com` e outro documento | Segundo: 409 `USER_EMAIL_ALREADY_IN_USE` |
 | AUTH-03 | Login com alias | Cadastro com `joaosilva@gmail.com` → login com `JoaoSilva+loja@gmail.com` | 200 |
 | AUTH-04 | Alias não se aplica a domínio corporativo | Cadastro com `ana@empresa.com.br` → cadastro com `ana+x@empresa.com.br` | Segundo: 201 (são caixas diferentes) |
@@ -144,7 +144,7 @@ Os IDs são estáveis: o teste da #36 usa o ID no nome (`it('AUTH-03: login com 
 | EMP-01 | Cadastro com link de acesso | ADMIN `POST /employees` (MECHANIC) → e-mail "Bem-vindo à equipe: defina sua senha" → `set-password` → login | 201; e-mail com token; set-password 200; login 200 e `GET /auth/me` com `role: MECHANIC` |
 | EMP-02 | E-mail (ou alias) em uso | `POST /employees` com o e-mail de um cliente, escrito como alias | 409 `USER_EMAIL_ALREADY_IN_USE` |
 | EMP-03 | Link expirado ou perdido | `POST /auth/password-reset` com o e-mail do funcionário | 202 e novo e-mail; o fluxo é o de redefinição |
-| EMP-04 | Troca de papel | `PATCH /employees/:id/role` MECHANIC → ADMIN → login de novo | 200; o token antigo continua com o papel antigo até expirar; o novo login traz `role: ADMIN` |
+| EMP-04 | Troca de papel | `PATCH /employees/:id/role` MECHANIC → ADMIN → login de novo | 200; o token antigo continua autorizando com o papel antigo até expirar (403 em rota de ADMIN), embora `GET /auth/me` já mostre `role: ADMIN` (relê do banco); o novo login acessa as rotas de ADMIN |
 | EMP-05 | Mesmo papel | `PATCH` com o papel atual | 200, sem mudança |
 | EMP-06 | Último ADMIN | Com um só ADMIN, rebaixá-lo | 409 `EMPLOYEE_LAST_ADMIN` |
 | EMP-07 | Listagem e detalhe | `QUERY /employees` com filtro `role` e `name`; `GET /employees/:id` inexistente | 200 ordenado por nome; 404 |
