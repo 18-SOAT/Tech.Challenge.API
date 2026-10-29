@@ -9,7 +9,13 @@
 # Senha de demonstração do MECHANIC, documentada como credencial de demo (exigência
 # do enunciado) e substituível por SEED_MECHANIC_PASSWORD.
 e96f04f3ad985e34001a436ace351ff168ccab5e:prisma/seed.ts:generic-api-key:26
+80e103f25a27c28f3be15fea962be6e6643d6996:prisma/seed.ts:generic-api-key:31
 
 # Senha fictícia em teste e2e (roda com fakes, sem banco nem usuário real).
 d5eb7c451d9552fa9f2da8e04656a1a0ad41a41a:test/http-security.e2e.spec.ts:generic-api-key:88
 d5eb7c451d9552fa9f2da8e04656a1a0ad41a41a:test/http-security.e2e.spec.ts:generic-api-key:97
+
+# Credencial de demo do MECHANIC (a mesma do seed) e senha fictícia dos testes
+# black-box: valem só contra o banco *_test, esvaziado a cada teste.
+80e103f25a27c28f3be15fea962be6e6643d6996:test/black-box/support/actors.ts:generic-api-key:12
+80e103f25a27c28f3be15fea962be6e6643d6996:test/black-box/support/data.ts:generic-api-key:38
