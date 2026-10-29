@@ -268,7 +268,7 @@ Cada cenário dispara as requisições ao mesmo tempo (`Promise.all`) e confere,
 Decisões que a implementação (#36) segue:
 
 - **Banco isolado:** `mechanic_system_test`, via `TEST_DATABASE_URL`, nunca o de desenvolvimento. Reusa `prepareTestDatabase()` e `resetDatabase()` de `test/integration/database.ts`, que recusam banco sem sufixo `_test` e aplicam as migrations com `prisma migrate deploy`.
-- **Limpeza:** antes de cada teste, `resetDatabase()` (TRUNCATE) e o seed real (`prisma/seed.ts`, rodado com `Bun.spawnSync` e `DATABASE_URL` de teste). O seed grava o ADMIN e o MECHANIC de demonstração com bcrypt de verdade.
+- **Limpeza:** antes de cada teste, `resetDatabase()` (TRUNCATE) e o seed real (`seedDemoEmployees`, exportado de `prisma/seed.ts` e chamado em processo). O seed grava o ADMIN e o MECHANIC de demonstração com bcrypt de verdade.
   - O `seedWorkshop()` dos testes de integração **não** serve: grava `hashedPassword: 'x'`, então ninguém consegue logar.
 - **Testes em série:** o banco é compartilhado.
 - **App real em processo:**
