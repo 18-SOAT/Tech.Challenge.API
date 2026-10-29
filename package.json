@@ -20,6 +20,7 @@
     "test:watch": "bun test --watch",
     "test:cov": "bun test --coverage",
     "test:integration": "bun test --path-ignore-patterns='node_modules/**' ./test/integration",
+    "test:black-box": "bun test --timeout 20000 --path-ignore-patterns='node_modules/**' ./test/black-box",
     "changeset": "changeset",
     "changeset:status": "changeset status --since=origin/main",
     "version": "changeset version",

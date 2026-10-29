@@ -42,15 +42,16 @@ bun.lock │ bun │ 0
 
 ## 2. Segredos no histórico (`gitleaks`)
 
-O enunciado exige o repositório sem credenciais, senhas ou tokens. O gitleaks varreu **todo o histórico** (`--log-opts="--all"`, 98 commits com conteúdo; merges não trazem conteúdo novo) e a árvore atual. Foram 4 achados da regra genérica `generic-api-key`, todos **falsos positivos**:
+O enunciado exige o repositório sem credenciais, senhas ou tokens. O gitleaks varreu **todo o histórico** (`--log-opts="--all"`, 98 commits com conteúdo; merges não trazem conteúdo novo) e a árvore atual. Foram 7 achados da regra genérica `generic-api-key`, todos **falsos positivos**:
 
 | Onde | O que é | Por que não é segredo |
 |---|---|---|
 | `README.md`, 1º commit (`90dddec`) | Token do badge do CircleCI no README do template NestJS | Público, do projeto `nestjs/nest`, presente em todo starter do Nest; já removido do README |
-| `prisma/seed.ts:26` | Senha **de demonstração** do MECHANIC | Credencial de demo, documentada por exigência do enunciado e substituível por `SEED_MECHANIC_PASSWORD` |
+| `prisma/seed.ts:26` e `:31` | Senha **de demonstração** do MECHANIC (a linha mudou de lugar quando o seed virou função) | Credencial de demo, documentada por exigência do enunciado e substituível por `SEED_MECHANIC_PASSWORD` |
 | `test/http-security.e2e.spec.ts:88` e `:97` | Senha fictícia de teste | Teste e2e com fakes, sem banco nem usuário real |
+| `test/black-box/support/actors.ts:12` e `data.ts:38` | Senha de demo do MECHANIC (a do seed) e senha fictícia dos testes black-box | Valem só contra o banco `*_test`, esvaziado a cada teste |
 
-Os quatro estão no [`.gitleaksignore`](../../.gitleaksignore) **por fingerprint** (commit + arquivo + regra + linha), não por pasta: um segredo novo nos mesmos arquivos continua sendo detectado. A varredura da árvore também apontou o `.env` local, que é **ignorado pelo git** (`.gitignore`) e não aparece em nenhum commit, o que é o comportamento esperado.
+Os sete estão no [`.gitleaksignore`](../../.gitleaksignore) **por fingerprint** (commit + arquivo + regra + linha), não por pasta: um segredo novo nos mesmos arquivos continua sendo detectado. Como o fingerprint inclui o hash do commit e o merge por squash cria um commit novo, as linhas de credencial de demo e de senha fictícia também trazem o comentário `gitleaks:allow`, que libera só aquela linha em qualquer commit. A varredura da árvore também apontou o `.env` local, que é **ignorado pelo git** (`.gitignore`) e não aparece em nenhum commit, o que é o comportamento esperado.
 
 **Resultado:** `no leaks found`.
 

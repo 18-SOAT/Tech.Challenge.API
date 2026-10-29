@@ -51,6 +51,7 @@ Sempre que for implementar algo, **explique o conceito antes de codar**:
 - `bun test` — testes unitários + e2e (`*.spec.ts`)
 - `bun run test:cov` — cobertura (`bun test --coverage`)
 - `bun run test:integration` — testes de integração contra Postgres real (`test/integration/`; banco `TEST_DATABASE_URL`, padrão `mechanic_system_test`)
+- `bun run test:black-box` — testes black-box: a API só por HTTP, com Postgres e Mailpit reais (`test/black-box/`; precisa de `docker compose up -d postgres mailpit`)
 - `bun run lint` — biome lint
 - `bun run format` — biome format --write
 - `bun run check` — biome check --write (lint + format, usado pelo lint-staged)
@@ -72,7 +73,7 @@ Sempre que for implementar algo, **explique o conceito antes de codar**:
 - Testes de rota ficam em `test/*.e2e.spec.ts`: montam a app com `makeTestApp()` (`test/fakes/make-test-app.ts` — o `createApp` com fakes no lugar dos adapters) e chamam `app.handle(jsonRequest(...))` (`test/helpers/http.ts`) — sem servidor HTTP real, sem banco.
 - Todo módulo com rota protegida tem e2e chamando a rota **sem token** e esperando 401.
 - Testes de integração ficam em `test/integration/*.integration.spec.ts`: usam os adapters Prisma contra um banco `*_test` (`test/integration/database.ts` cria o banco, aplica as migrations e esvazia as tabelas). Ficam fora do `bun test` (`pathIgnorePatterns` no `bunfig.toml`) e rodam com `bun run test:integration`. Use para provar o que o fake não prova: rollback de transação e corrida resolvida por update condicional.
-- Testes black-box (a API só por HTTP, com Postgres e Mailpit reais) seguem o levantamento em [`docs/testing/black-box.md`](docs/testing/black-box.md): matriz de autorização (contrato lido pelo teste), cenários por módulo, concorrência e decisões do ambiente. Permissão alterada no código → matriz alterada no mesmo PR.
+- Testes black-box ficam em `test/black-box/*.black-box.spec.ts` e seguem o levantamento em [`docs/testing/black-box.md`](docs/testing/black-box.md): matriz de autorização (contrato lido pelo teste), cenários por módulo, concorrência e decisões do ambiente. Sobem a app real com `startApi()` (`test/black-box/support/api.ts`, sobre o `buildApp` de `src/build-app.ts`) e chamam por `fetch`; tokens só por login, recursos só pela API (`support/actors.ts`, `support/fixtures.ts`), e-mails pelo Mailpit (`support/mailpit.ts`). Ficam fora do `bun test` e rodam com `bun run test:black-box`. Permissão alterada no código → matriz alterada no mesmo PR. Camadas de teste no [ADR 0003](docs/adr/0003-camadas-de-teste.md).
 - Cobertura: `bun run test:cov` exige 80% de linhas **por arquivo** (`bunfig.toml`); o CI roda `bun test --coverage`.
 - Imports de teste vêm de `bun:test` (`describe`, `it`, `expect`, `beforeEach`, `mock`).
 

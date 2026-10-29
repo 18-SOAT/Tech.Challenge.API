@@ -71,6 +71,15 @@ bun run test:integration        # cria o banco mechanic_system_test e aplica as 
 
 O banco vem de `TEST_DATABASE_URL` (padrão `postgresql://postgres:postgres@localhost:5432/mechanic_system_test`) e precisa terminar em `_test`: as tabelas são esvaziadas a cada teste, então ele nunca aponta para o banco de desenvolvimento.
 
+Testes black-box (a API só por HTTP, com Postgres e Mailpit reais, fora do `bun test`): seguem o contrato de [`docs/testing/black-box.md`](docs/testing/black-box.md), inclusive a matriz de autorização.
+
+```bash
+docker compose up -d postgres mailpit
+bun run test:black-box
+```
+
+Usam o mesmo `TEST_DATABASE_URL` e leem os e-mails no Mailpit (`MAILPIT_URL`, padrão `http://localhost:8025`; SMTP em `MAILPIT_SMTP_HOST`/`MAILPIT_SMTP_PORT`, padrão `localhost:1025`). As camadas de teste estão no [ADR 0003](docs/adr/0003-camadas-de-teste.md).
+
 ## Qualidade
 
 ```bash
