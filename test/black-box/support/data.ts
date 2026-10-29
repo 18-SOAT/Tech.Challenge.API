@@ -35,5 +35,5 @@ export const uniqueSku = () => `SKU-${nextId()}`;
 
 export const uniqueName = (prefix: string) => `${prefix} ${nextId()}`;
 
-export const PASSWORD = 'senha-forte-123';
+export const PASSWORD = 'senha-forte-123'; // gitleaks:allow (senha fictícia)
 export const PHONE = '11987654321';

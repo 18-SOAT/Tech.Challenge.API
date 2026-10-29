@@ -9,7 +9,7 @@ export const SEED_ADMIN = {
 };
 export const SEED_MECHANIC = {
   email: 'mecanico@oficina.com',
-  password: 'mecanico12345',
+  password: 'mecanico12345', // gitleaks:allow (senha de demo do seed)
 };
 
 export interface Customer {

@@ -28,7 +28,7 @@ const demoEmployees = (env: SeedEnv) => [
   },
   {
     email: Email.create(env.SEED_MECHANIC_EMAIL || 'mecanico@oficina.com'),
-    password: Password.create(env.SEED_MECHANIC_PASSWORD || 'mecanico12345'),
+    password: Password.create(env.SEED_MECHANIC_PASSWORD || 'mecanico12345'), // gitleaks:allow (senha de demo)
     name: env.SEED_MECHANIC_NAME || 'Mecânico',
     role: EmployeeRole.MECHANIC,
   },
