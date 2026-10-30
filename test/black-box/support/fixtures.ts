@@ -79,6 +79,8 @@ export async function createProduct(
 
 export interface OpenedOrder {
   vehicleId: string;
+  plate: string;
+  serviceId: string;
   orderId: string;
   serviceOrderId: string;
   serviceItemId: string;
@@ -100,6 +102,8 @@ export async function openOrder(
   });
   return {
     vehicleId: vehicle.id,
+    plate: vehicle.plate,
+    serviceId: service.id,
     orderId: data.order.id,
     serviceOrderId: data.serviceOrder.id,
     serviceItemId: data.serviceOrder.services[0].id,
@@ -178,4 +182,64 @@ export async function orderReadyToDeliver(
     200,
   );
   return order;
+}
+
+export async function finishOrder(
+  api: Api,
+  token: string,
+  serviceOrderId: string,
+): Promise<void> {
+  await created(
+    api,
+    'POST',
+    `/service-orders/${serviceOrderId}/finish`,
+    token,
+    undefined,
+    200,
+  );
+}
+
+export async function deliverOrder(
+  api: Api,
+  admin: string,
+  orderId: string,
+): Promise<void> {
+  await created(
+    api,
+    'POST',
+    `/orders/${orderId}/deliver`,
+    admin,
+    undefined,
+    200,
+  );
+}
+
+// OS em AWAITING_APPROVAL com um produto além do serviço: base dos cenários de
+// estoque na aprovação. `stock` é o saldo do produto; `quantity`, o que a OS pede.
+export async function quoteWithProduct(
+  api: Api,
+  admin: string,
+  customer: { customerId: string; document: string },
+  mechanicId: string,
+  { stock, quantity }: { stock: number; quantity: number },
+): Promise<OpenedOrder & { productId: string }> {
+  const order = await openOrder(api, admin, customer);
+  await assign(api, admin, order.serviceOrderId, mechanicId);
+  const product = await createProduct(api, admin, { stock });
+  await created(
+    api,
+    'POST',
+    `/service-orders/${order.serviceOrderId}/products`,
+    admin,
+    { productId: product.id, quantity },
+  );
+  await created(
+    api,
+    'POST',
+    `/service-orders/${order.serviceOrderId}/complete-diagnosis`,
+    admin,
+    undefined,
+    200,
+  );
+  return { ...order, productId: product.id };
 }
