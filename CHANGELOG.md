@@ -1,5 +1,11 @@
 # tech-challenge-api
 
+## 2.5.1
+
+### Patch Changes
+
+- 80e103f: Testes black-box: `buildApp(env)` separa a montagem da app do `listen` do servidor, o seed exporta `seedDemoEmployees`, e a matriz de autorização passa a ser testada por HTTP contra Postgres e Mailpit reais (job novo no CI).
+
 ## 2.5.0
 
 ### Minor Changes
