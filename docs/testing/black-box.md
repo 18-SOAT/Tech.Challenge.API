@@ -293,6 +293,7 @@ Decisões que a implementação (#36) segue:
   - Testes em `test/black-box/*.black-box.spec.ts`, um arquivo por módulo, mais `authorization.black-box.spec.ts` e `concurrency.black-box.spec.ts`.
   - Script próprio, `bun run test:black-box`, fora do `bun test`: o pre-push continua rápido e sem Docker.
   - Pré-requisito local: `docker compose up -d postgres mailpit`.
+  - Cenário que expõe um bug da API continua escrito como o contrato manda, com o número da issue no nome: `it.failing` se a falha é determinística (avisa quando o bug for corrigido) e `it.todo` se é intermitente (corrida). A correção do bug troca para `it`.
 - **CI:** um job com `services: postgres` e `mailpit`, rodando migrations e a suíte.
 
 ## 5. Achados do levantamento
@@ -304,3 +305,8 @@ Pontos encontrados ao levantar as regras. Não são corrigidos aqui: cada um vir
 3. **Edições de itens em diagnóstico: o último vence.** O `save()` da OS compara só o status; duas edições simultâneas em `IN_DIAGNOSIS` não se bloqueiam.
 4. **Aprovação não confere se o produto ainda está ativo.** Um produto desativado depois do diagnóstico ainda é baixado na aprovação.
 5. **Usuário inativo não é alcançável pela API.** O 401 `AUTH_USER_UNAVAILABLE` existe, mas nenhuma rota desativa um usuário; fica coberto só pelos testes unitários.
+
+Achados da implementação dos testes (#36), já com issue:
+
+6. **Filtros de data aceitam formato fora de ISO 8601** (#54). O `date-time` do Elysia aceita `01/10/2026`, que o `new Date` lê como 10 de janeiro. Cenário SO-Q03 (`it.failing`).
+7. **Corrida em campo único devolve 500 em vez de 409** (#55). Com o driver adapter do `pg`, o P2002 não traz os campos da constraint, só o índice; os repositórios não reconhecem a violação. Cenário CON-09 (`it.todo`).
