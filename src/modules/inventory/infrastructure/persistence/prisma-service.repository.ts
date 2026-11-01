@@ -4,7 +4,7 @@ import type { PrismaClient } from '../../../../shared/infrastructure/prisma/clie
 import {
   isForeignKeyViolation,
   isRecordNotFound,
-  uniqueViolationFields,
+  isUniqueViolation,
 } from '../../../../shared/infrastructure/prisma/prisma-errors.js';
 import type { Service } from '../../domain/entities/service.entity.js';
 import { ServiceError } from '../../domain/errors/service.error.js';
@@ -59,7 +59,7 @@ export class PrismaServiceRepository implements ServiceRepository {
       });
     } catch (error) {
       // Corrida com o check do use case: o unique do banco é a última barreira.
-      if (uniqueViolationFields(error)?.includes('name')) {
+      if (isUniqueViolation(error, ['name', 'services_name_key'])) {
         throw ServiceError.nameAlreadyInUse();
       }
       throw error;

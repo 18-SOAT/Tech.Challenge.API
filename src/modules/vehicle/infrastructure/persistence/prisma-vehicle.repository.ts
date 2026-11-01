@@ -4,7 +4,7 @@ import type { PrismaClient } from '../../../../shared/infrastructure/prisma/clie
 import {
   isForeignKeyViolation,
   isRecordNotFound,
-  uniqueViolationFields,
+  isUniqueViolation,
 } from '../../../../shared/infrastructure/prisma/prisma-errors.js';
 import { CustomerError } from '../../../customer/domain/errors/customer.error.js';
 import type { Vehicle } from '../../domain/entities/vehicle.entity.js';
@@ -56,7 +56,7 @@ export class PrismaVehicleRepository implements VehicleRepository {
       });
     } catch (error) {
       // Corridas com o check do use case: placa tomada ou cliente excluído no meio.
-      if (uniqueViolationFields(error)?.includes('plate')) {
+      if (isUniqueViolation(error, ['plate', 'vehicles_plate_key'])) {
         throw VehicleError.licensePlateAlreadyInUse();
       }
       if (isForeignKeyViolation(error)) throw CustomerError.notFound();

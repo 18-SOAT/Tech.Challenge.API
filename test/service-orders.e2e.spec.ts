@@ -734,6 +734,8 @@ describe('Service Orders (e2e)', () => {
     it('400 em filtro inválido e 404 em Ordem inexistente', async () => {
       const responses = await Promise.all([
         query('/service-orders', { createdFrom: 'ontem' }),
+        query('/service-orders', { createdFrom: '01/10/2026' }),
+        query('/service-orders/execution-time', { finishedFrom: '2026-10-01' }),
         query('/service-orders', { page: 0 }),
         query('/service-orders/queue', { assigneeId: 'abc' }),
         query('/orders', { status: 'PRONTA' }),
