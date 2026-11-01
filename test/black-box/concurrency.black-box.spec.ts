@@ -221,10 +221,7 @@ describe('concorrência (docs/testing/black-box.md)', () => {
     expect(statuses(responses)).toEqual([201, 409]);
   });
 
-  // Bug #55: o P2002 do driver adapter não traz os campos, então a corrida que
-  // chega ao @unique sobe como 500 — de forma intermitente, por isso `todo` e não
-  // `failing`. Quando a #55 for corrigida, troque por `it`.
-  it.todo('CON-09: placa duplicada em paralelo (#55)', async () => {
+  it('CON-09: placa duplicada em paralelo', async () => {
     const { customerId } = await newCustomer();
     const plate = uniquePlate();
     const post = () =>

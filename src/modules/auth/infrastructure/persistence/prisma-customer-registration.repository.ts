@@ -1,7 +1,7 @@
 import type { PrismaClient } from '../../../../shared/infrastructure/prisma/client.js';
 import {
   isEmailUniqueViolation,
-  uniqueViolationFields,
+  isUniqueViolation,
 } from '../../../../shared/infrastructure/prisma/prisma-errors.js';
 import type { Customer } from '../../../customer/domain/entities/customer.entity.js';
 import { CustomerError } from '../../../customer/domain/errors/customer.error.js';
@@ -28,7 +28,7 @@ export class PrismaCustomerRegistrationRepository
       // Corrida entre o check de unicidade do use case e este insert: o banco é a
       // última barreira, e o erro vira o mesmo DomainError que o use case lançaria.
       if (isEmailUniqueViolation(error)) throw UserError.emailAlreadyInUse();
-      if (uniqueViolationFields(error)?.includes('document'))
+      if (isUniqueViolation(error, ['document', 'customers_document_key']))
         throw CustomerError.documentAlreadyInUse();
       throw error;
     }

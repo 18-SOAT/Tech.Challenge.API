@@ -4,7 +4,7 @@ import type { PrismaClient } from '../../../../shared/infrastructure/prisma/clie
 import {
   isForeignKeyViolation,
   isRecordNotFound,
-  uniqueViolationFields,
+  isUniqueViolation,
 } from '../../../../shared/infrastructure/prisma/prisma-errors.js';
 import type { Product } from '../../domain/entities/product.entity.js';
 import { ProductError } from '../../domain/errors/product.error.js';
@@ -67,7 +67,7 @@ export class PrismaProductRepository implements ProductRepository {
       });
     } catch (error) {
       // Corrida com o check do use case: o unique do banco é a última barreira.
-      if (uniqueViolationFields(error)?.includes('sku')) {
+      if (isUniqueViolation(error, ['sku', 'products_sku_key'])) {
         throw ProductError.skuAlreadyInUse();
       }
       throw error;

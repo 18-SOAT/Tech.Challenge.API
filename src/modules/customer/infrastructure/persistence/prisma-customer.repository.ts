@@ -4,7 +4,7 @@ import type { PrismaClient } from '../../../../shared/infrastructure/prisma/clie
 import {
   isForeignKeyViolation,
   isRecordNotFound,
-  uniqueViolationFields,
+  isUniqueViolation,
 } from '../../../../shared/infrastructure/prisma/prisma-errors.js';
 import type { Customer } from '../../domain/entities/customer.entity.js';
 import { CustomerError } from '../../domain/errors/customer.error.js';
@@ -66,7 +66,7 @@ export class PrismaCustomerRepository implements CustomerRepository {
       });
     } catch (error) {
       // Corrida entre o check do use case e o insert: o banco é a última barreira.
-      if (uniqueViolationFields(error)?.includes('document')) {
+      if (isUniqueViolation(error, ['document', 'customers_document_key'])) {
         throw CustomerError.documentAlreadyInUse();
       }
       throw error;
