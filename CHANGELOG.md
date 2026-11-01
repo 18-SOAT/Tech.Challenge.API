@@ -1,5 +1,13 @@
 # tech-challenge-api
 
+## 2.5.1
+
+### Patch Changes
+
+- 80e103f: Testes black-box: `buildApp(env)` separa a montagem da app do `listen` do servidor, o seed exporta `seedDemoEmployees`, e a matriz de autorização passa a ser testada por HTTP contra Postgres e Mailpit reais (job novo no CI).
+- adf01b2: Corrida em campo único (placa, documento, SKU, nome do serviço) responde 409 em vez de 500: a violação de unique é reconhecida também pelo nome do índice que o driver adapter do pg devolve.
+- dcdda2c: Filtros de data das consultas de OS aceitam só ISO 8601 com hora e fuso (ex: 2026-10-01T00:00:00Z); `01/10/2026` e `2026-10-01` passam a responder 400.
+
 ## 2.5.0
 
 ### Minor Changes
