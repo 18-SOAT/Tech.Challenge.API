@@ -306,7 +306,7 @@ Pontos encontrados ao levantar as regras. Não são corrigidos aqui: cada um vir
 4. **Aprovação não confere se o produto ainda está ativo.** Um produto desativado depois do diagnóstico ainda é baixado na aprovação.
 5. **Usuário inativo não é alcançável pela API.** O 401 `AUTH_USER_UNAVAILABLE` existe, mas nenhuma rota desativa um usuário; fica coberto só pelos testes unitários.
 
-Achados da implementação dos testes (#36), já com issue:
+Achados da implementação dos testes (#36), já corrigidos:
 
-6. **Filtros de data aceitam formato fora de ISO 8601** (#54). O `date-time` do Elysia aceita `01/10/2026`, que o `new Date` lê como 10 de janeiro. Cenário SO-Q03 (`it.failing`).
-7. **Corrida em campo único devolve 500 em vez de 409** (#55). Com o driver adapter do `pg`, o P2002 não traz os campos da constraint, só o índice; os repositórios não reconhecem a violação. Cenário CON-09 (`it.todo`).
+6. **Filtros de data aceitam formato fora de ISO 8601** (#54). O `date-time` do Elysia aceita `01/10/2026`, que o `new Date` lê como 10 de janeiro. Corrigido com o formato estrito `iso-date-time`; cenário SO-Q03.
+7. **Corrida em campo único devolve 500 em vez de 409** (#55). Com o driver adapter do `pg`, o P2002 não traz os campos da constraint, só o índice; os repositórios não reconhecem a violação. Corrigido com `isUniqueViolation`, que também aceita o nome do índice; cenário CON-09.

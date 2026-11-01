@@ -674,10 +674,7 @@ describe('service-order (docs/testing/black-box.md)', () => {
       expectError(await executionTime('ontem'), 400);
     });
 
-    // Bug #54: o `date-time` do Elysia aceita data curta e o `new Date` a lê como
-    // mês/dia (01/10 vira 10 de janeiro). Quando a #54 for corrigida, este caso
-    // passa a responder 400 e o `failing` acusa: troque por `it`.
-    it.failing('SO-Q03: filtros de data — fora de ISO 8601 (#54)', async () => {
+    it('SO-Q03: filtros de data — fora de ISO 8601', async () => {
       for (const date of ['01/10/2026', '2026-10-01']) {
         expectError(await executionTime(date), 400);
       }
