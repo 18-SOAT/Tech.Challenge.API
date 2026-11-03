@@ -2,7 +2,7 @@
 
 Back-end do **Tech Challenge FIAP — SOAT (Software Architecture), Fase 1**: o MVP de um sistema integrado de atendimento e execução de serviços para uma oficina mecânica de médio porte.
 
-> 🎥 **Vídeo da entrega:** _link a definir_ · 🧭 **Documentação DDD:** [`docs/ddd/`](docs/ddd/README.md)
+> 🎥 **Vídeo da entrega:** [YouTube](https://youtu.be/TYa6cyuK_vs) · 🧭 **Documentação DDD:** [`docs/ddd/`](docs/ddd/README.md)
 
 ## Sumário
 
